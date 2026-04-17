@@ -24,7 +24,7 @@
 	},
 	"vars": {
 		"ENVIRONMENT": "production",
-		"FRONTEND_URL": "https://crmx-my.pages.dev"
+		"FRONTEND_URL": "https://crm-cloudflare-workers-web.112518xq.workers.dev"
 	},
 	"dev": {
 		"port": 8888
