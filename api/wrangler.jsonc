@@ -1,0 +1,32 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "crm-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-04-04",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "crm-api",
+			"database_id": "948912a8-c552-4ecd-b60f-87c8e3240cb5",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"triggers": {
+		"crons": [
+			"0 2 * * *"
+		]
+	},
+	"vars": {
+		"ENVIRONMENT": "production",
+		"FRONTEND_URL": "https://crmx-my.pages.dev"
+	},
+	"dev": {
+		"port": 8888
+	}
+}
