@@ -13,7 +13,7 @@
 		{
 			"binding": "DB",
 			"database_name": "crm-api",
-			"database_id": "948912a8-c552-4ecd-b60f-87c8e3240cb5",
+			"database_id": "761fc215-5f62-40e3-883a-950b92ec19b2",
 			"migrations_dir": "drizzle"
 		}
 	],
