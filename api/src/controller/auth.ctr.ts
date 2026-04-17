@@ -32,6 +32,12 @@ authRouter.post('/login', async (c) => {
 
   const _db = c.get('db')
   const _ip = c.req.header('CF-Connecting-IP') || 'unknown'
+
+  if (!c.env.JWT_SECRET || !c.env.JWT_SECRET.trim()) {
+    console.error('JWT_SECRET is empty')
+    return c.json({ code: -500, msg: 'JWT_SECRET is empty', data: null }, 200)
+  }
+
   const _result = await loginUser(_parsed.data, _db, c.env.JWT_SECRET, _ip)
 
   return success(c, _result)
