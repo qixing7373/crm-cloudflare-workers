@@ -6,7 +6,7 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	  "observability": {
+	"observability": {
     "enabled": true,
     "head_sampling_rate": 1,
     "logs": {
@@ -20,7 +20,7 @@
       "persist": true,
       "head_sampling_rate": 1
     }
-  },
+    },
 	"d1_databases": [
 		{
 			"binding": "DB",
