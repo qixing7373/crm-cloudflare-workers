@@ -37,7 +37,7 @@
 
 	"vars": {
 		"ENVIRONMENT": "production",
-		"FRONTEND_URL": "https://crm-web-8nq.pages.dev"
+		"FRONTEND_URL": "https://14b6e330.crm-web-8nq.pages.dev"
 	},
 	"dev": {
 		"port": 8888
