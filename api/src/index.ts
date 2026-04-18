@@ -37,34 +37,34 @@ app.use('/*', async (c, next) => {
 })
 
 // ── 健康检查 ──
-// app.get('/', async (c) => {
-//   let db = false
-//   try {
-//     // 执行原生 D1 极简查询以探测可用性
-//     await c.env.DB.prepare('SELECT 1').first()
-//     db = true
-//   } catch (e) {
-//     console.error('[DB_ERROR]', e)
-//   }
-//   return success(c, { db })
-// })
-
-// ── 健康检查 ──
 app.get('/', async (c) => {
   let db = false
   try {
+    // 执行原生 D1 极简查询以探测可用性
     await c.env.DB.prepare('SELECT 1').first()
     db = true
   } catch (e) {
     console.error('[DB_ERROR]', e)
   }
-
-  return c.json({
-    jwt: c.env.JWT_SECRET ? 'OK' : 'EMPTY',
-    testFlag: c.env.TEST_FLAG || 'EMPTY',
-    db,
-  })
+  return success(c, { db })
 })
+
+// // ── 健康检查 ──
+// app.get('/', async (c) => {
+//   let db = false
+//   try {
+//     await c.env.DB.prepare('SELECT 1').first()
+//     db = true
+//   } catch (e) {
+//     console.error('[DB_ERROR]', e)
+//   }
+
+//   return c.json({
+//     jwt: c.env.JWT_SECRET ? 'OK' : 'EMPTY',
+//     testFlag: c.env.TEST_FLAG || 'EMPTY',
+//     db,
+//   })
+// })
 
 
 // ── 公开路由 ──
