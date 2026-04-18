@@ -52,7 +52,6 @@ app.use('/*', async (c, next) => {
 // ── 健康检查 ──
 app.get('/', async (c) => {
   let db = false
-
   try {
     await c.env.DB.prepare('SELECT 1').first()
     db = true
@@ -62,6 +61,7 @@ app.get('/', async (c) => {
 
   return c.json({
     jwt: c.env.JWT_SECRET ? 'OK' : 'EMPTY',
+    testFlag: c.env.TEST_FLAG || 'EMPTY',
     db,
   })
 })
