@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "crm-cloudflare-workers",
+	"name": "crm-api",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-04-04",
 	"compatibility_flags": [
@@ -24,8 +24,8 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "crm-api",
-			"database_id": "761fc215-5f62-40e3-883a-950b92ec19b2",
+			"database_name": "d1crm-api",
+			"database_id": "3d4d4e9a-4e66-4dc5-bb7a-a84c40c3085c",
 			"migrations_dir": "drizzle"
 		}
 	],
