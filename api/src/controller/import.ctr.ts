@@ -23,7 +23,15 @@ importRouter.post('/sync', requireRole('manager'), async (c) => {
   }
 
   try {
-    const _result = await syncImport(clean_list, _viewer.id, c.get('db'), file_name, file_hash, import_id)
+    const _result = await syncImport(
+  clean_list,
+  user_id,
+  db,
+  file_name,
+  file_hash,
+  import_id,
+  c.env.SYNC_QUEUE
+)
     return success(c, _result)
   } catch (_error: any) {
     console.error('[API /sync] CRASH:', _error)
