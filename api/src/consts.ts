@@ -5,7 +5,7 @@
 export const PROTECT_DAYS    = 90
 export const BATCH_SIZE      = 200
 export const TOKEN_LIFE      = 86400
-export const MAX_IMPORT      = 200000
+export const MAX_IMPORT      = 100000
 export const MAX_FILE_SIZE   = 20 * 1024 * 1024
 export const INSERT_BATCH_SIZE = 50
 export const PHONE_REGEX     = /^\+[1-9]\d{6,14}$/
