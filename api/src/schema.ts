@@ -1,7 +1,0 @@
-export * from './model/entity/contact_field'
-export * from './model/entity/user_group'
-export * from './model/entity/user'
-export * from './model/entity/contact'
-export * from './model/entity/contact_log'
-export * from './model/entity/import_log'
-export * from './model/entity/user_log'

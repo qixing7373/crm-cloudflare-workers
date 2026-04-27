@@ -1,1 +1,0 @@
-ALTER TABLE `import_log` ADD `file_hash` text;
