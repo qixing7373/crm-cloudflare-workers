@@ -77,186 +77,130 @@ export async function syncImport(
 ): Promise<{ import_id: number; results: SyncRowResult[]; chunk_size: number }> {
   const _now = new Date()
   const _results: SyncRowResult[] = []
+  const _added: ImportRow[] = []
+  const _updated: Array<ImportRow & { contact_id: number; changes: Record<string, { old: unknown; new: unknown }> }> = []
+  let _skipped = 0
+  let _frozen = 0
 
-  let totalAdded = 0
-  let totalUpdated = 0
-  let totalSkipped = 0
-  let totalFrozen = 0
-
-  // 1. 先创建/复用导入日志
-  let _import_id = import_id
-
-  if (!_import_id) {
-    const _import_result = await ImportDao.insertLog(db, {
-      user_id,
-      file: file_name,
-      file_hash,
-      total: 0,
-      added: 0,
-      updated: 0,
-      skipped: 0,
-      frozen: 0,
-    })
-
-    _import_id = _import_result[0].id
-  }
-
-  // 2. 分批：查一批，处理一批，立即写一批
+  // 1. 分批查询 D1 进行四路分类
   for (let _i = 0; _i < clean_list.length; _i += BATCH_SIZE) {
     const _batch = clean_list.slice(_i, _i + BATCH_SIZE)
-    const _phones = _batch.map((r) => r.phone)
-
+    const _phones = _batch.map(r => r.phone)
     const _existing = await ContactDao.findByPhones(db, _phones)
-    const _exist_map = new Map(_existing.map((e) => [e.phone, e]))
-
-    const _to_add: ImportRow[] = []
-    const _to_update: Array<
-      ImportRow & {
-        contact_id: number
-        changes: Record<string, { old: unknown; new: unknown }>
-      }
-    > = []
-
-    let batchSkipped = 0
-    let batchFrozen = 0
+    const _exist_map = new Map(_existing.map(e => [e.phone, e]))
 
     for (const _row of _batch) {
       const _old = _exist_map.get(_row.phone)
 
       if (!_old) {
-        _to_add.push(_row)
-        _results.push({
-          phone: _row.phone,
-          type: 'added',
-        })
+        _added.push(_row)
+        _results.push({ phone: _row.phone, type: 'added' })
         continue
       }
 
       if (_old.status === 'developed') {
-        batchFrozen++
+        _frozen++
         _results.push({
           phone: _row.phone,
           type: 'frozen',
-          reason: `资源已被用户 ${_old.owner_id} 开发，触发防写保护`,
+          reason: `资源已被用户 ${_old.owner_id} 开发，触发防写保护`
         })
         continue
       }
 
-      const _old_data =
-        typeof _old.data === 'string'
-          ? JSON.parse(_old.data)
-          : _old.data || {}
-
+      const _old_data = typeof _old.data === 'string' ? JSON.parse(_old.data) : (_old.data || {})
       const _changes = diffRecord(_old_data, _row.data)
 
       if (Object.keys(_changes).length > 0) {
-        _to_update.push({
-          ..._row,
-          contact_id: _old.id,
-          changes: _changes,
-        })
-
-        _results.push({
-          phone: _row.phone,
-          type: 'updated',
-          changes: _changes,
-        })
+        _updated.push({ ..._row, contact_id: _old.id, changes: _changes })
+        _results.push({ phone: _row.phone, type: 'updated', changes: _changes })
       } else {
-        batchSkipped++
-        _results.push({
-          phone: _row.phone,
-          type: 'skipped',
-        })
+        _skipped++
+        _results.push({ phone: _row.phone, type: 'skipped' })
       }
     }
+  }
 
-    // 3. 新增数据：分批写入
-    for (let j = 0; j < _to_add.length; j += INSERT_BATCH_SIZE) {
-      const batch = _to_add.slice(j, j + INSERT_BATCH_SIZE)
-
-      const contactValues = batch.map((row) => ({
-        phone: row.phone,
-        data: JSON.stringify(row.data),
-        status: 'undeveloped' as const,
-        import_count: 1,
-        first_imported_at: _now,
-        latest_imported_at: _now,
-      }))
-
-      const _contact_results = await ContactDao.insertBatch(db, contactValues)
-
-      if (_contact_results.length > 0) {
-        const logValues = _contact_results.map((c) => ({
-          contact_id: c.id,
-          user_id,
-          import_id: _import_id!,
-          type: 'create' as const,
-        }))
-
-        await ContactLogDao.insertBatch(db, logValues)
-      }
-    }
-
-    // 4. 更新数据：db.batch 批量执行
-    for (let j = 0; j < _to_update.length; j += INSERT_BATCH_SIZE) {
-      const batch = _to_update.slice(j, j + INSERT_BATCH_SIZE)
-
-      const updateQueries = batch.map((row) =>
-        ContactDao.updateImportData(
-          db,
-          row.contact_id,
-          JSON.stringify(row.data),
-          _now
-        )
-      )
-
-      await db.batch(updateQueries as any)
-
-      const logValues = batch.map((row) => ({
-        contact_id: row.contact_id,
-        user_id,
-        import_id: _import_id!,
-        type: 'update' as const,
-        changes: JSON.stringify(row.changes),
-      }))
-
-      await ContactLogDao.insertBatch(db, logValues)
-    }
-
-    const batchAdded = _to_add.length
-    const batchUpdated = _to_update.length
-
-    totalAdded += batchAdded
-    totalUpdated += batchUpdated
-    totalSkipped += batchSkipped
-    totalFrozen += batchFrozen
-
-    // 5. 每个大批次更新一次导入统计，避免最后一次性堆积
+  // 2. 创建或更新导入日志
+  let _import_id = import_id
+  if (!_import_id) {
+    const _import_result = await ImportDao.insertLog(db, {
+      user_id,
+      file: file_name,
+      file_hash,
+      total: clean_list.length,
+      added: _added.length,
+      updated: _updated.length,
+      skipped: _skipped,
+      frozen: _frozen,
+    })
+    _import_id = _import_result[0].id
+  } else {
     await ImportDao.incrementLogCounters(db, _import_id, {
-      total: _batch.length,
-      added: batchAdded,
-      updated: batchUpdated,
-      skipped: batchSkipped,
-      frozen: batchFrozen,
+      total: clean_list.length,
+      added: _added.length,
+      updated: _updated.length,
+      skipped: _skipped,
+      frozen: _frozen,
     })
   }
 
-  // 6. 只写一次用户操作日志
+  // 3. 直接入库（与原 confirmImport 相同逻辑）
+
+  for (let i = 0; i < _added.length; i += INSERT_BATCH_SIZE) {
+    const batch = _added.slice(i, i + INSERT_BATCH_SIZE)
+    const contactValues = batch.map(row => ({
+      phone: row.phone,
+      data: JSON.stringify(row.data),
+      status: 'undeveloped' as const,
+      import_count: 1,
+      first_imported_at: _now,
+      latest_imported_at: _now,
+    }))
+
+    const _contact_results = await ContactDao.insertBatch(db, contactValues)
+
+    const logValues = _contact_results.map(c => ({
+      contact_id: c.id,
+      user_id,
+      import_id: _import_id,
+      type: 'create' as const,
+    }))
+    await ContactLogDao.insertBatch(db, logValues)
+  }
+
+  for (let i = 0; i < _updated.length; i += INSERT_BATCH_SIZE) {
+    const batch = _updated.slice(i, i + INSERT_BATCH_SIZE)
+    const updateQueries = batch.map(row =>
+      ContactDao.updateImportData(db, row.contact_id, JSON.stringify(row.data), _now)
+    )
+    await db.batch(updateQueries as any)
+
+    const logValues = batch.map(row => ({
+      contact_id: row.contact_id,
+      user_id,
+      import_id: _import_id,
+      type: 'update' as const,
+      changes: JSON.stringify(row.changes),
+    }))
+    await ContactLogDao.insertBatch(db, logValues)
+  }
+
   await ImportDao.insertUserLog(db, {
     user_id,
     action: 'import',
     details: JSON.stringify({
       import_id: _import_id,
-      added: totalAdded,
-      updated: totalUpdated,
-      skipped: totalSkipped,
-      frozen: totalFrozen,
+      added: _added.length,
+      updated: _updated.length,
+      skipped: _skipped,
+      frozen: _frozen,
     }),
   })
 
   return {
     import_id: _import_id,
     results: _results,
-    chunk_size: 500,
+    chunk_size: 200
   }
 }
