@@ -24,22 +24,7 @@
 "limits": {
   "cpu_ms": 300000
 },
-"queues": {
-  "producers": [
-    {
-      "queue": "crm-sync-queue",
-      "binding": "SYNC_QUEUE"
-    }
-  ],
-  "consumers": [
-    {
-      "queue": "crm-sync-queue",
-      "max_batch_size": 100,
-      "max_batch_timeout": 1,
-      "max_retries": 3
-    }
-  ]
-},
+
 	"d1_databases": [
 		{
 			"binding": "DB",
