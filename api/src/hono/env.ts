@@ -18,6 +18,7 @@ export interface UserPayload {
 export type AppEnv = {
   Bindings: {
     DB: D1Database
+    SYNC_QUEUE: Queue
     JWT_SECRET: string
     ENVIRONMENT: string
     FRONTEND_URL: string
