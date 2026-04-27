@@ -21,6 +21,21 @@
       "head_sampling_rate": 1
     }
     },
+"queues": {
+  "producers": [
+    {
+      "queue": "crm-sync-queue",
+      "binding": "SYNC_QUEUE"
+    }
+  ],
+  "consumers": [
+    {
+      "queue": "crm-sync-queue",
+      "max_batch_size": 100,
+      "max_batch_timeout": 1
+    }
+  ]
+},
 	"d1_databases": [
 		{
 			"binding": "DB",
