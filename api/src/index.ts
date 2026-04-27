@@ -21,6 +21,7 @@ import importRouter from '@/controller/import.ctr'
 import inviteRouter from '@/controller/invite.ctr'
 import { runDropoff } from '@/wrangler/dropoff'
 import { dbHook, paginateHook } from '@/middleware/hook.mid'
+import { processImportQueueMessages } from '@/service/import.queue'
 
 const app = new Hono<AppEnv>()
 
@@ -96,8 +97,40 @@ app.notFound((c) => fail(c, -1, 'Not found'))
 
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledEvent, env: AppEnv['Bindings'], ctx: ExecutionContext) {
+
+  async scheduled(
+    _event: ScheduledEvent,
+    env: AppEnv['Bindings'],
+    ctx: ExecutionContext
+  ) {
     const { drizzle } = await import('drizzle-orm/d1')
     ctx.waitUntil(runDropoff(drizzle(env.DB)))
+  },
+
+  async queue(
+    batch: MessageBatch<any>,
+    env: AppEnv['Bindings'],
+    ctx: ExecutionContext
+  ) {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          await processImportQueueMessages(
+            batch.messages.map((m) => m.body),
+            env.DB
+          )
+
+          for (const message of batch.messages) {
+            message.ack()
+          }
+        } catch (err) {
+          console.error('[QUEUE_ERROR]', err)
+
+          for (const message of batch.messages) {
+            message.retry()
+          }
+        }
+      })()
+    )
   },
 }
