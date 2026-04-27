@@ -121,3 +121,140 @@ export async function syncImport(
     chunk_size: 1000,
   }
 }
+// export async function syncImport(
+//   clean_list: ImportRow[],
+//   user_id: number,
+//   db: DrizzleD1Database<any>,
+//   file_name: string,
+//   file_hash: string,
+//   import_id?: number
+// ): Promise<{ import_id: number; results: SyncRowResult[]; chunk_size: number }> {
+//   const _now = new Date()
+//   const _results: SyncRowResult[] = []
+//   const _added: ImportRow[] = []
+//   const _updated: Array<ImportRow & { contact_id: number; changes: Record<string, { old: unknown; new: unknown }> }> = []
+//   let _skipped = 0
+//   let _frozen = 0
+
+//   // 1. 分批查询 D1 进行四路分类
+//   for (let _i = 0; _i < clean_list.length; _i += BATCH_SIZE) {
+//     const _batch = clean_list.slice(_i, _i + BATCH_SIZE)
+//     const _phones = _batch.map(r => r.phone)
+//     const _existing = await ContactDao.findByPhones(db, _phones)
+//     const _exist_map = new Map(_existing.map(e => [e.phone, e]))
+
+//     for (const _row of _batch) {
+//       const _old = _exist_map.get(_row.phone)
+
+//       if (!_old) {
+//         _added.push(_row)
+//         _results.push({ phone: _row.phone, type: 'added' })
+//         continue
+//       }
+
+//       if (_old.status === 'developed') {
+//         _frozen++
+//         _results.push({
+//           phone: _row.phone,
+//           type: 'frozen',
+//           reason: `资源已被用户 ${_old.owner_id} 开发，触发防写保护`
+//         })
+//         continue
+//       }
+
+//       const _old_data = typeof _old.data === 'string' ? JSON.parse(_old.data) : (_old.data || {})
+//       const _changes = diffRecord(_old_data, _row.data)
+
+//       if (Object.keys(_changes).length > 0) {
+//         _updated.push({ ..._row, contact_id: _old.id, changes: _changes })
+//         _results.push({ phone: _row.phone, type: 'updated', changes: _changes })
+//       } else {
+//         _skipped++
+//         _results.push({ phone: _row.phone, type: 'skipped' })
+//       }
+//     }
+//   }
+
+//   // 2. 创建或更新导入日志
+//   let _import_id = import_id
+//   if (!_import_id) {
+//     const _import_result = await ImportDao.insertLog(db, {
+//       user_id,
+//       file: file_name,
+//       file_hash,
+//       total: clean_list.length,
+//       added: _added.length,
+//       updated: _updated.length,
+//       skipped: _skipped,
+//       frozen: _frozen,
+//     })
+//     _import_id = _import_result[0].id
+//   } else {
+//     await ImportDao.incrementLogCounters(db, _import_id, {
+//       total: clean_list.length,
+//       added: _added.length,
+//       updated: _updated.length,
+//       skipped: _skipped,
+//       frozen: _frozen,
+//     })
+//   }
+
+//   // 3. 直接入库（与原 confirmImport 相同逻辑）
+
+//   for (let i = 0; i < _added.length; i += INSERT_BATCH_SIZE) {
+//     const batch = _added.slice(i, i + INSERT_BATCH_SIZE)
+//     const contactValues = batch.map(row => ({
+//       phone: row.phone,
+//       data: JSON.stringify(row.data),
+//       status: 'undeveloped' as const,
+//       import_count: 1,
+//       first_imported_at: _now,
+//       latest_imported_at: _now,
+//     }))
+
+//     const _contact_results = await ContactDao.insertBatch(db, contactValues)
+
+//     const logValues = _contact_results.map(c => ({
+//       contact_id: c.id,
+//       user_id,
+//       import_id: _import_id,
+//       type: 'create' as const,
+//     }))
+//     await ContactLogDao.insertBatch(db, logValues)
+//   }
+
+//   for (let i = 0; i < _updated.length; i += INSERT_BATCH_SIZE) {
+//     const batch = _updated.slice(i, i + INSERT_BATCH_SIZE)
+//     const updateQueries = batch.map(row =>
+//       ContactDao.updateImportData(db, row.contact_id, JSON.stringify(row.data), _now)
+//     )
+//     await db.batch(updateQueries as any)
+
+//     const logValues = batch.map(row => ({
+//       contact_id: row.contact_id,
+//       user_id,
+//       import_id: _import_id,
+//       type: 'update' as const,
+//       changes: JSON.stringify(row.changes),
+//     }))
+//     await ContactLogDao.insertBatch(db, logValues)
+//   }
+
+//   await ImportDao.insertUserLog(db, {
+//     user_id,
+//     action: 'import',
+//     details: JSON.stringify({
+//       import_id: _import_id,
+//       added: _added.length,
+//       updated: _updated.length,
+//       skipped: _skipped,
+//       frozen: _frozen,
+//     }),
+//   })
+
+//   return {
+//     import_id: _import_id,
+//     results: _results,
+//     chunk_size: 200
+//   }
+// }
