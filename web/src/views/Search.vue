@@ -200,12 +200,12 @@
 </template>
 
 <script lang="ts" setup>
-import { CallOutline, AddOutline } from '@vicons/ionicons5'
-import { claimContact, searchContacts } from '@/api/contact'
-import { FieldApi, type ContactField } from '@/api/field'
-import type { ContactRow } from '@/types/api'
-import type { FormInst, FormRules } from 'naive-ui'
 import { app } from '@pinia'
+import { AddOutline, CallOutline } from '@vicons/ionicons5'
+import type { FormInst, FormRules } from 'naive-ui'
+import { claimContact, searchContacts } from '@/api/contact'
+import { type ContactField, FieldApi } from '@/api/field'
+import type { ContactRow } from '@/types/api'
 
 // ═══ 状态 ═══
 const message = useMessage()
@@ -250,7 +250,8 @@ async function handleSearch() {
   }
 }
 
-function parseData(raw: string): Record<string, unknown> {
+function parseData(raw: ContactRow['data']): Record<string, unknown> {
+  if (raw && typeof raw !== 'string') return raw
   try {
     return JSON.parse(raw || '{}')
   } catch {
@@ -336,7 +337,7 @@ function submitCreateAndClaim() {
         let corePhone = ''
 
         dynamic_fields.value.forEach((f) => {
-          let val = dynamic_form.value[f.key]
+          const val = dynamic_form.value[f.key]
           if (f.type === 'phone' && !corePhone) {
             // 我们从字段里提炼出手机号作为主识别键
             corePhone = val

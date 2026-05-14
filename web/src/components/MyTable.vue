@@ -7,8 +7,8 @@
 </template>
 
 <script lang="ts" setup>
+import { NButton, NFlex, NIcon, NTime } from 'naive-ui'
 import { computed, h } from 'vue'
-import { NFlex, NIcon, NTime, NButton } from 'naive-ui'
 import MyCopy from '@/components/MyCopy.vue'
 
 const props = withDefaults(

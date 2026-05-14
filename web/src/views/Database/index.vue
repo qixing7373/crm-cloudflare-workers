@@ -27,15 +27,14 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, reactive } from 'vue'
-import { useMessage } from 'naive-ui'
-import { deleteContact, updateContact } from '@/api/contact'
-import { FieldApi, type ContactField } from '@/api/field'
-import http from '@/plugins/axios'
 import { t } from '@i18n'
-
-import { useColumns } from './useColumns'
+import { useMessage } from 'naive-ui'
+import { computed, onMounted, reactive } from 'vue'
+import { deleteContact, fetchContacts, updateContact } from '@/api/contact'
+import { type ContactField, FieldApi } from '@/api/field'
+import type { ContactRow, ContactStatus } from '@/types/api'
 import EditDrawer from './EditDrawer.vue'
+import { useColumns } from './useColumns'
 
 const ms = useMessage()
 
@@ -44,22 +43,32 @@ const st = reactive({
   saving: false,
   keyword: '',
   keywordTail: false,
-  list: [],
+  list: [] as ContactRow[],
   fields: [] as ContactField[],
   page: 1,
   size: 20,
   total: 0,
   editOpen: false,
   editId: null as number | null,
-  form: { phone: '', status: 'undeveloped', data: {} as Record<string, any> }
+  form: { phone: '', status: 'undeveloped' as ContactStatus, data: {} as Record<string, unknown> }
 })
 
-const openEdit = (r: any) => {
+const parseData = (data: ContactRow['data']) => {
+  if (!data) return {}
+  if (typeof data !== 'string') return { ...data }
+  try {
+    return JSON.parse(data || '{}')
+  } catch {
+    return {}
+  }
+}
+
+const openEdit = (r: ContactRow) => {
   st.editId = r.id
   st.form = {
     phone: r.phone || '',
     status: r.status || 'undeveloped',
-    data: typeof r.data === 'string' ? JSON.parse(r.data || '{}') : { ...r.data }
+    data: parseData(r.data)
   }
   st.editOpen = true
 }
@@ -84,7 +93,7 @@ const saveEdit = async () => {
   if (!st.editId) return
   st.saving = true
   try {
-    const res: any = await updateContact(st.editId, st.form)
+    const res = await updateContact(st.editId, st.form)
     if (res.code === 1 || res.code === 200) {
       ms.success(t('成功'))
       st.editOpen = false
@@ -99,7 +108,7 @@ const saveEdit = async () => {
 
 const drop = async (id: number) => {
   try {
-    const res: any = await deleteContact(id)
+    const res = await deleteContact(id)
     if (res.code === 1 || res.code === 200) {
       ms.success(t('成功'))
       fetch()
@@ -112,12 +121,12 @@ const drop = async (id: number) => {
 const fetch = async () => {
   st.loading = true
   try {
-    const p: any = {
+    const p = {
       page: st.page,
       size: st.size,
-      ...(st.keyword ? { q: st.keyword, tail_only: st.keywordTail ? '1' : undefined } : {})
+      ...(st.keyword ? { q: st.keyword, tail_only: st.keywordTail } : {})
     }
-    const res: any = await http.get(`/api/contact`, { params: p })
+    const res = await fetchContacts(p)
     if (res.code === 1 || res.code === 200) {
       st.list = res.data.list
       st.total = res.data.total_count || res.data.total || 0

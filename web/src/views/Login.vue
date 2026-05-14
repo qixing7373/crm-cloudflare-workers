@@ -3,69 +3,60 @@
   @desc   登录卡片，支持跳转注册，标题居中语言切换（国旗）
 -->
 <template>
-  <div class="!min-h-screen !flex !items-center !justify-center !relative">
-    <n-card class="!w-[400px] !max-w-[95vw] !shadow-sm !rounded-xl" hoverable size="large">
-      <template #header>
-        <n-flex justify="center">
-          <n-button quaternary size="small" @click="toggleLang">
-            {{ _current_lang === 'zh-CN' ? '🇨🇳 中文' : '🇺🇸 English' }}
-          </n-button>
-        </n-flex>
-      </template>
+  <div class="auth-page">
+    <form class="auth-card" @submit.prevent="handleLogin">
+      <button class="lang-button" type="button" @click="toggleLang">
+        {{ _current_lang === 'zh-CN' ? '🇨🇳 中文' : '🇺🇸 English' }}
+      </button>
 
-      <n-form :model="form_data" @submit.prevent="handleLogin">
-        <n-form-item path="username"
-          :rule="{ required: true, message: t('用户名') + '!', trigger: 'blur' }">
-          <n-input v-model:value.trim="form_data.username" size="large" :placeholder="t('用户名')">
-            <template #prefix>
-              <n-icon>
-                <PersonOutline />
-              </n-icon>
-            </template>
-          </n-input>
-        </n-form-item>
+      <label class="field">
+        <span>{{ t('用户名') }}</span>
+        <input v-model.trim="form_data.username" autocomplete="username" :placeholder="t('用户名')" />
+      </label>
 
-        <n-form-item path="password"
-          :rule="{ required: true, message: t('密码') + '!', trigger: 'blur' }">
-          <n-input type="password" show-password-on="click" v-model:value.trim="form_data.password" size="large"
-            :placeholder="t('密码')">
-            <template #prefix>
-              <n-icon>
-                <LockClosedOutline />
-              </n-icon>
-            </template>
-          </n-input>
-        </n-form-item>
+      <label class="field">
+        <span>{{ t('密码') }}</span>
+        <input
+          v-model.trim="form_data.password"
+          autocomplete="current-password"
+          :placeholder="t('密码')"
+          type="password"
+        />
+      </label>
 
-        <n-form-item>
-          <n-button type="primary" attr-type="submit" size="large" block
-            :disabled="!form_data.username || !form_data.password" :loading="is_loading">
-            {{ t('登录') }}
-          </n-button>
-        </n-form-item>
+      <p v-if="error_text" class="error-text">{{ error_text }}</p>
 
-        <n-flex justify="center">
-          <n-button text type="primary" @click="router.push('/register')">
-            {{ t('注册') }}
-          </n-button>
-        </n-flex>
-      </n-form>
-    </n-card>
+      <button class="submit-button" type="submit" :disabled="!can_submit || is_loading">
+        {{ is_loading ? t('登录') + '...' : t('登录') }}
+      </button>
+
+      <button class="link-button" type="button" @click="router.push('/register')">
+        {{ t('注册') }}
+      </button>
+    </form>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { loadLang, t } from '@i18n'
 import { app, user } from '@pinia'
-import { LockClosedOutline, PersonOutline } from '@vicons/ionicons5'
+import { runIdle } from '@/utils/idle'
 
 const router = useRouter()
 const route = useRoute()
-const message = useMessage()
 
 const form_data = reactive({ username: '', password: '' })
 const is_loading = ref(false)
+const error_text = ref('')
 const _current_lang = ref(app().language || 'zh-CN')
+const can_submit = computed(() => !!form_data.username && !!form_data.password)
+
+onMounted(() => {
+  runIdle(() => {
+    void import('@/components/PrivateShell.vue')
+    void import('@/views/Search.vue')
+  })
+})
 
 async function toggleLang() {
   const _next = _current_lang.value === 'zh-CN' ? 'en-US' : 'zh-CN'
@@ -74,16 +65,98 @@ async function toggleLang() {
 }
 
 async function handleLogin() {
+  if (!can_submit.value || is_loading.value) return
   is_loading.value = true
+  error_text.value = ''
   try {
     await user().login(form_data.username, form_data.password)
-    message.success(t('成功'))
     const _redirect = (route.query.redirect as string) || '/search'
     router.push(_redirect)
-  } catch (_err: any) {
-    // 错误已由 Axios 拦截器处理
+  } catch (err: any) {
+    error_text.value = t(err?.msg || '服务器内部错误')
   } finally {
     is_loading.value = false
   }
 }
 </script>
+
+<style scoped>
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f8fafc;
+}
+
+.auth-card {
+  width: min(400px, 95vw);
+  display: grid;
+  gap: 18px;
+  padding: 30px 32px 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+}
+
+.lang-button,
+.link-button {
+  justify-self: center;
+  border: 0;
+  background: transparent;
+  color: #2f855a;
+  font: inherit;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.field input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #d8dee6;
+  border-radius: 3px;
+  color: #111827;
+  font: inherit;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.field input:focus {
+  border-color: #4caf73;
+  box-shadow: 0 0 0 3px rgb(76 175 115 / 14%);
+}
+
+.submit-button {
+  height: 40px;
+  border: 0;
+  border-radius: 3px;
+  background: #4caf73;
+  color: #fff;
+  font: inherit;
+  transition: background 0.16s ease, opacity 0.16s ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #429765;
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+}
+
+.error-text {
+  margin: -4px 0;
+  color: #dc2626;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+</style>

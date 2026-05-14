@@ -1,5 +1,5 @@
+import { NButton, NFlex, NPopconfirm, NTag, NText, NTime } from 'naive-ui'
 import { computed, h, type Ref } from 'vue'
-import { NTag, NText, NTime, NFlex, NButton, NPopconfirm } from 'naive-ui'
 import type { ContactField } from '@/api/field'
 
 export interface ColumnOptions {
@@ -49,7 +49,11 @@ export function useColumns({ t, fields, onEdit, onDelete }: ColumnOptions) {
       render: (r: any) =>
         h(
           NTag,
-          { type: r.status === 'developed' ? 'success' : 'warning', size: 'small', bordered: false },
+          {
+            type: r.status === 'developed' ? 'success' : 'warning',
+            size: 'small',
+            bordered: false
+          },
           { default: () => t(r.status === 'developed' ? '已开发' : '未开发') }
         )
     },

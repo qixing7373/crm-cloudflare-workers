@@ -3,17 +3,35 @@
  * @desc   搜索、认领、撤销、转移、标签等
  */
 import http from '@/plugins/axios'
-import type { ApiResponse, ContactRow, PaginateResponse } from '@/types/api'
+import type { ApiResponse, ContactRow, ContactStatus, PaginateResponse } from '@/types/api'
 
-export function fetchContacts(params: { page?: number; size?: number; status?: string }) {
+export interface ContactListParams {
+  page?: number
+  size?: number
+  status?: ContactStatus
+  q?: string
+  tail_only?: '1' | boolean
+}
+
+export interface UpdateContactPayload {
+  phone?: string
+  status?: ContactStatus
+  data?: Record<string, unknown>
+}
+
+const normalizeTailOnly = (value?: ContactListParams['tail_only']) =>
+  value === true ? '1' : value || undefined
+
+export function fetchContacts(params: ContactListParams) {
+  const { tail_only, ...rest } = params
   return http.get<never, PaginateResponse<ContactRow>>('/api/contact', {
-    params
+    params: { ...rest, tail_only: normalizeTailOnly(tail_only) }
   })
 }
 
-export function searchContacts(q: string, tail_only?: string) {
+export function searchContacts(q: string, tailOnly?: boolean | '1') {
   return http.get<never, ApiResponse<ContactRow[]>>('/api/contact/search', {
-    params: { q, tail_only }
+    params: { q, tail_only: tailOnly === true ? '1' : tailOnly }
   })
 }
 
@@ -22,16 +40,19 @@ export function fetchContact(id: number) {
 }
 
 export function claimContact(phone: string, data?: Record<string, unknown>) {
-  return http.post<never, ApiResponse<{ id: number; phone: string; status: string }>>(
+  return http.post<never, ApiResponse<{ id: number; phone: string; status: ContactStatus }>>(
     '/api/contact/claim',
     { phone, data }
   )
 }
 
 export function revokeContact(id: number, confirm_word: string) {
-  return http.put<never, ApiResponse<{ id: number; status: string }>>(`/api/contact/${id}/revoke`, {
-    confirm_word
-  })
+  return http.put<never, ApiResponse<{ id: number; status: ContactStatus }>>(
+    `/api/contact/${id}/revoke`,
+    {
+      confirm_word
+    }
+  )
 }
 
 export function transferContacts(
@@ -50,6 +71,6 @@ export function deleteContact(id: number) {
   return http.delete<never, ApiResponse<null>>(`/api/contact/${id}`)
 }
 
-export function updateContact(id: number, data: any) {
+export function updateContact(id: number, data: UpdateContactPayload) {
   return http.put<never, ApiResponse<{ id: number }>>(`/api/contact/${id}`, data)
 }

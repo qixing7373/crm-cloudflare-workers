@@ -15,8 +15,8 @@
 </template>
 
 <script lang="ts" setup>
-import { NSpace, NCheckbox } from 'naive-ui'
 import { t } from '@i18n'
+import { NCheckbox, NSpace } from 'naive-ui'
 import MySearch from './MySearch.vue'
 
 const keyword = defineModel<string>('keyword')

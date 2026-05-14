@@ -36,9 +36,9 @@ export const FieldService = {
   },
 
   async sort(db: DB, ids: number[], viewerId: number) {
-    for (let i = 0; i < ids.length; i++) {
-      await FieldDao.updateSort(db, ids[i], i, viewerId)
-    }
+    if (!ids.length) return
+    const now = new Date()
+    await db.batch(ids.map((id, index) => FieldDao.updateSortQuery(db, id, index, viewerId, now)) as any)
   },
 
   async disable(db: DB, id: number, viewerId: number) {

@@ -6,10 +6,13 @@ export async function downloadTpl(t: any, msg: any) {
     const { code, data } = await FieldApi.list()
     if (code !== 1 || !data?.length) return
 
-    const headers = data
-      .filter((f: any) => f.enabled !== false)
-      .sort((a: any, b: any) => (a.sort || 0) - (b.sort || 0))
-      .map((f: any) => f.label)
+    const headers = [
+      ...data
+        .filter((f: any) => f.enabled !== false)
+        .sort((a: any, b: any) => (a.sort || 0) - (b.sort || 0))
+        .map((f: any) => f.label),
+      t('状态')
+    ]
 
     const wb = new ExcelJS.Workbook()
     const st = wb.addWorksheet(t('数据导入模板'), { views: [{ state: 'frozen', ySplit: 1 }] })
@@ -28,7 +31,7 @@ export async function downloadTpl(t: any, msg: any) {
       }
     }))
 
-    Object.assign(st.getRow(1), { height: 24 }).eachCell((c) =>
+    Object.assign(st.getRow(1), { height: 24 }).eachCell((c) => {
       Object.assign(c, {
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FA' } },
         font: { name: '宋体', bold: true, size: 11, color: { argb: 'FF333333' } },
@@ -36,15 +39,23 @@ export async function downloadTpl(t: any, msg: any) {
         border: br,
         protection: { locked: true }
       })
-    )
+    })
 
-    Array.from({ length: 499 }).forEach((_, i) =>
-      headers.forEach((__, j) => (st.getRow(i + 2).getCell(j + 1).border = br as any))
-    )
+    Array.from({ length: 499 }).forEach((_, i) => {
+      headers.forEach((__, j) => {
+        st.getRow(i + 2).getCell(j + 1).border = br as any
+      })
+    })
 
     const getCol = (n: number): string =>
       n ? getCol(~~((n - 1) / 26)) + String.fromCharCode(65 + ((n - 1) % 26)) : ''
     st.autoFilter = `A1:${getCol(headers.length)}1`
+
+    const statusCol = headers.length
+    st.getColumn(statusCol).width = 14
+    st.getColumn(statusCol).eachCell((cell, rowNumber) => {
+      if (rowNumber > 1) cell.note = t('可填：未开发、已开发；留空默认为未开发')
+    })
 
     await st.protect(Math.random().toString(), {
       selectUnlockedCells: true,

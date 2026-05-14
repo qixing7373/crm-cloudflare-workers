@@ -37,7 +37,10 @@
 
 	"vars": {
 		"ENVIRONMENT": "production",
+        "JWT_SECRET": "0b2b7f8881580d68c9b9797013e8f76833c293dbd1ad2e4efc99d52ef81da94c",
 		"FRONTEND_URL": "https://14b6e330.crm-web-8nq.pages.dev"
+		"RATE_LIMIT_PER_MINUTE": "120",
+		"RATE_LIMIT_WINDOW_SECONDS": "60"
 	},
 	"dev": {
 		"port": 8888

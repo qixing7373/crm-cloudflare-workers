@@ -1,5 +1,14 @@
 /// <reference types="@rsbuild/core/types" />
 
+interface ImportMetaEnv {
+  readonly PUBLIC_API_URL?: string
+  readonly PUBLIC_APP_VERSION?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
 

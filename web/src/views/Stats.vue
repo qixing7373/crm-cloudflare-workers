@@ -1,31 +1,64 @@
 <template>
-  <div class="!w-full !h-full">
-    <n-card :bordered="false" class="!h-full !shadow !rounded-xl">
-      <template #header>
-        <n-flex align="center" justify="space-between">
-          <n-text class="!text-xl !font-bold">我的报表 (My Reports)</n-text>
-          <n-tag type="warning">完善中 (Under Construction)</n-tag>
+  <n-flex vertical :size="16">
+    <n-card :bordered="false" class="!shadow !rounded-xl">
+      <n-flex align="center" justify="space-between">
+        <div>
+          <n-text class="!text-xl !font-bold">我的报表</n-text>
+          <div class="!text-sm !text-gray-500 !mt-1">按月份查看当前账号已开发客户数量</div>
+        </div>
+        <n-flex align="center" :size="12">
+          <n-date-picker v-model:formatted-value="month" type="month" value-format="yyyy-MM" clearable />
+          <n-button type="primary" :loading="loading" @click="loadData">刷新</n-button>
         </n-flex>
-      </template>
-
-      <n-empty description="个人效能分析模块设计中..." class="!mt-20">
-        <template #extra>
-          <n-flex vertical align="center" :size="24" class="!mt-4 !w-full !max-w-3xl !mx-auto">
-            <n-alert title="报表功能建设展望" type="info" :show-icon="true" class="!w-full !text-left">
-              本模块致力于个人效能矩阵的精细化建模，以微观视角追踪转化链路每一步骤的指标健康度：
-              <ul class="!list-disc !ml-5 !mt-2 !space-y-1">
-                <li><strong>漏斗流转分析 (Funnel Analytics)：</strong> 动态追踪分配、联系、意向至最终成单的核心漏斗断层，定位转化瓶颈。</li>
-                <li><strong>周期效率 (Cycle Efficiency)：</strong> 多维度打平工作周期的耗时数据，计算触达响应时间及跟进滞留率。</li>
-                <li><strong>资产构成矩阵 (Portfolio Composition)：</strong> 对个人当前拥有的私域资产量级、分类比例、活跃状态分布做深度透视，形成个人画像。</li>
-              </ul>
-            </n-alert>
-          </n-flex>
-        </template>
-      </n-empty>
+      </n-flex>
     </n-card>
-  </div>
+
+    <n-grid :cols="3" :x-gap="16" :y-gap="16">
+      <n-gi>
+        <n-card :bordered="false" class="!shadow !rounded-xl">
+          <n-statistic label="已开发客户" :value="stat?.claimed_count ?? 0" />
+        </n-card>
+      </n-gi>
+      <n-gi>
+        <n-card :bordered="false" class="!shadow !rounded-xl">
+          <n-statistic label="统计月份" :value="stat?.month === 'all' ? '全部' : stat?.month || '-'" />
+        </n-card>
+      </n-gi>
+      <n-gi>
+        <n-card :bordered="false" class="!shadow !rounded-xl">
+          <n-statistic label="用户 ID" :value="stat?.user_id ?? user().user_info?.id ?? '-'" />
+        </n-card>
+      </n-gi>
+    </n-grid>
+
+    <n-card :bordered="false" class="!shadow !rounded-xl">
+      <n-alert type="info" :show-icon="true">
+        个人统计来自 `/api/stat/me`，只统计当前账号名下已开发客户。清空月份后统计全部数据。
+      </n-alert>
+    </n-card>
+  </n-flex>
 </template>
 
 <script lang="ts" setup>
-import { NAlert, NCard, NEmpty, NFlex, NTag, NText } from 'naive-ui'
+import { user } from '@pinia'
+import { type MyStat, StatApi } from '@/api/stat'
+
+const message = useMessage()
+const loading = ref(false)
+const month = ref<string | null>(new Date().toISOString().slice(0, 7))
+const stat = ref<MyStat | null>(null)
+
+async function loadData() {
+  loading.value = true
+  try {
+    const res = await StatApi.fetchMine(month.value || undefined)
+    stat.value = res.data
+  } catch {
+    message.error('个人统计加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadData)
 </script>

@@ -18,8 +18,8 @@ import { ErrorCode } from '@/codes'
 
 const contactRouter = new Hono<AppEnv>()
 
-// ── GET /contact ── 总库列表（全角色，staff按owner_id隔离）
-contactRouter.get('/', async (c) => {
+// ── GET /contact ── 总库列表（manager+）
+contactRouter.get('/', requireRole('manager'), async (c) => {
   const _db = c.get('db')
   const _viewer = c.get('user')
   const { page: _page, size: _size, offset: _offset } = c.get('page_info')
@@ -67,6 +67,17 @@ contactRouter.post('/claim', async (c) => {
   return success(c, _result)
 })
 
+// ── PUT /contact/transfer ── 转移（manager+）
+contactRouter.put('/transfer', requireRole('manager'), async (c) => {
+  const _parsed = transferSchema.safeParse(await c.req.json())
+  if (!_parsed.success) return fail(c, ErrorCode.BAD_REQUEST)
+
+  const _db = c.get('db')
+  const _viewer = c.get('user')
+  await ContactService.transfer(_db, _parsed.data, _viewer.id)
+  return success(c, null)
+})
+
 // ── PUT /contact/:id ── 编辑（基础信息与动态字段）
 import { updateContactSchema } from '@/model/contact.dto'
 contactRouter.put('/:id', async (c) => {
@@ -94,17 +105,6 @@ contactRouter.put('/:id/revoke', requireRole('superadmin'), async (c) => {
   const _viewer = c.get('user')
   const _result = await ContactService.revoke(_db, _id, _viewer.id)
   return success(c, _result)
-})
-
-// ── PUT /contact/transfer ── 转移（manager+）
-contactRouter.put('/transfer', requireRole('manager'), async (c) => {
-  const _parsed = transferSchema.safeParse(await c.req.json())
-  if (!_parsed.success) return fail(c, ErrorCode.BAD_REQUEST)
-
-  const _db = c.get('db')
-  const _viewer = c.get('user')
-  await ContactService.transfer(_db, _parsed.data, _viewer.id)
-  return success(c, null)
 })
 
 // ── DELETE /contact/:id ── 软删除（超管）

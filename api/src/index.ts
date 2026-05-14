@@ -21,6 +21,7 @@ import importRouter from '@/controller/import.ctr'
 import inviteRouter from '@/controller/invite.ctr'
 import { runDropoff } from '@/wrangler/dropoff'
 import { dbHook, paginateHook } from '@/middleware/hook.mid'
+import { rateLimit } from '@/middleware/rateLimit.mid'
 
 const app = new Hono<AppEnv>()
 
@@ -51,9 +52,11 @@ app.get('/', async (c) => {
 
 
 // ── 公开路由 ──
+app.use('/auth/*', rateLimit)
 app.route('/auth', authRouter)
 
 // ── 需要认证的路由 ──
+app.use('/api/*', rateLimit)
 app.use('/api/*', auth)
 app.route('/api/user', userRouter)
 app.route('/api/group', groupRouter)

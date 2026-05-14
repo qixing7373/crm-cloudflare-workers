@@ -214,6 +214,19 @@ describe('previewImport 四路分类', () => {
     expect(_decoded.added).toBe(1)
     expect(_decoded.created_at).toBeGreaterThan(0)
   })
+
+  it('已开发状态导入未开发旧数据 → preview 标记 status diff', async () => {
+    const _sqlite = createTestDB()
+    _sqlite.run(`INSERT INTO contact (phone, data, status) VALUES ('+8613800005555', '{"name":"旧名"}', 'undeveloped')`)
+    const _db = wrapAsD1(_sqlite)
+    const _report = await previewImport([
+      { phone: '+8613800005555', data: { name: '旧名' }, status: 'developed' },
+    ], 1, drizzle(_db))
+
+    expect(_report.updated_list.length).toBe(1)
+    expect(_report.updated_list[0].changes.status.old).toBe('undeveloped')
+    expect(_report.updated_list[0].changes.status.new).toBe('developed')
+  })
 })
 
 describe('Service查询方法', () => {

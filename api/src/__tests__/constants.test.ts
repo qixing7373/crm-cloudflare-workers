@@ -3,7 +3,7 @@ import { PROTECT_DAYS, BATCH_SIZE, TOKEN_LIFE, MAX_IMPORT, MAX_FILE_SIZE, PHONE_
 
 describe('constants', () => {
   it('PROTECT_DAYS = 90', () => { expect(PROTECT_DAYS).toBe(90) })
-  it('BATCH_SIZE = 90', () => { expect(BATCH_SIZE).toBe(90) })
+  it('BATCH_SIZE = 200', () => { expect(BATCH_SIZE).toBe(200) })
   it('TOKEN_LIFE = 86400', () => { expect(TOKEN_LIFE).toBe(86400) })
   it('MAX_IMPORT = 50000', () => { expect(MAX_IMPORT).toBe(50000) })
   it('MAX_FILE_SIZE = 20MB', () => { expect(MAX_FILE_SIZE).toBe(20 * 1024 * 1024) })

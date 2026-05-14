@@ -7,6 +7,7 @@
 import type { Context, Next } from 'hono'
 import { ErrorCode } from '@/codes'
 import { fail } from '@/hono/response'
+import { encodeText, getHmacKey } from '@/utility/hmacKey'
 
 export async function auth(c: Context, next: Next) {
   const _header = c.req.header('Authorization')
@@ -17,17 +18,11 @@ export async function auth(c: Context, next: Next) {
   const _token = _header.slice(7)
   try {
     const _secret = (c.env as any).JWT_SECRET
-    const _key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(_secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify'],
-    )
+    const _key = await getHmacKey(_secret)
 
     const [_header_b64, _payload_b64, _sig_b64] = _token.split('.')
     const _sig = Uint8Array.from(atob(_sig_b64.replace(/-/g, '+').replace(/_/g, '/')), _ch => _ch.charCodeAt(0))
-    const _data = new TextEncoder().encode(`${_header_b64}.${_payload_b64}`)
+    const _data = encodeText(`${_header_b64}.${_payload_b64}`)
     const _valid = await crypto.subtle.verify('HMAC', _key, _sig, _data)
     if (!_valid) return fail(c, ErrorCode.UNAUTHORIZED)
 

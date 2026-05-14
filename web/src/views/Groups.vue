@@ -99,7 +99,7 @@ const columns: DataTableColumns<UserGroup> = [
     title: () => t('创建时间'),
     key: 'created_at',
     render(row) {
-      return new Date(row.created_at).toLocaleString()
+      return row.created_at ? new Date(row.created_at).toLocaleString() : '-'
     }
   },
   {

@@ -109,6 +109,136 @@ describe('IMPORT 路由集成测试', () => {
     expect(_json.code).toBeGreaterThanOrEqual(0)
   })
 
+  it('POST /api/import/sync → 支持批量上传已开发状态并可查看云端明细', async () => {
+    const _sqlite = createTestDB()
+    const _db = wrapAsD1(_sqlite)
+    const _app = createApp(_db)
+    const _h = await authHeader({ id: 7, role: 'manager' })
+
+    const _res = await _app.request('/api/import/sync', {
+      method: 'POST',
+      headers: { ..._h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_hash: 'status-hash',
+        file_name: 'status.csv',
+        clean_list: [
+          { phone: '+8613800138001', data: { name: '已开发客户' }, status: 'developed' },
+          { phone: '+8613800138002', data: { name: '普通客户' } },
+        ]
+      }),
+    })
+
+    const _json = await _res.json() as any
+    expect(_json.code).toBe(1)
+    const _developed = _sqlite.prepare('SELECT status, owner_id FROM contact WHERE phone = ?').get('+8613800138001') as any
+    const _normal = _sqlite.prepare('SELECT status, owner_id FROM contact WHERE phone = ?').get('+8613800138002') as any
+    expect(_developed.status).toBe('developed')
+    expect(_developed.owner_id).toBe(7)
+    expect(_normal.status).toBe('undeveloped')
+    expect(_normal.owner_id).toBeNull()
+
+    const _detailRes = await _app.request(`/api/import/${_json.data.import_id}`, { headers: _h })
+    const _detailJson = await _detailRes.json() as any
+    expect(_detailJson.data.details.length).toBe(2)
+    expect(_detailJson.data.details[0].phone).toBeTruthy()
+  })
+
+  it('POST /api/import/sync → 已有未开发数据可批量升级为已开发', async () => {
+    const _sqlite = createTestDB()
+    _sqlite.run(`INSERT INTO contact (phone, data, status, import_count) VALUES ('+8613800138011', '{"name":"旧客户"}', 'undeveloped', 1)`)
+    const _db = wrapAsD1(_sqlite)
+    const _app = createApp(_db)
+    const _h = await authHeader({ id: 8, role: 'manager' })
+
+    const _res = await _app.request('/api/import/sync', {
+      method: 'POST',
+      headers: { ..._h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_hash: 'upgrade-status-hash',
+        file_name: 'upgrade.csv',
+        clean_list: [
+          { phone: '+8613800138011', data: { name: '新客户' }, status: 'developed' },
+        ]
+      }),
+    })
+
+    const _json = await _res.json() as any
+    expect(_json.code).toBe(1)
+    expect(_json.data.results[0].type).toBe('updated')
+    expect(_json.data.results[0].changes.status.new).toBe('developed')
+
+    const _contact = _sqlite.prepare('SELECT status, owner_id, import_count, data FROM contact WHERE phone = ?').get('+8613800138011') as any
+    expect(_contact.status).toBe('developed')
+    expect(_contact.owner_id).toBe(8)
+    expect(_contact.import_count).toBe(2)
+    expect(JSON.parse(_contact.data).name).toBe('新客户')
+  })
+
+  it('POST /api/import/sync → 重复和冻结行写入云端明细日志', async () => {
+    const _sqlite = createTestDB()
+    _sqlite.run(`INSERT INTO contact (id, phone, data, status, owner_id) VALUES (201, '+8613800138021', '{"name":"重复"}', 'undeveloped', null)`)
+    _sqlite.run(`INSERT INTO contact (id, phone, data, status, owner_id) VALUES (202, '+8613800138022', '{"name":"冻结"}', 'developed', 99)`)
+    const _db = wrapAsD1(_sqlite)
+    const _app = createApp(_db)
+    const _h = await authHeader({ id: 9, role: 'manager' })
+
+    const _res = await _app.request('/api/import/sync', {
+      method: 'POST',
+      headers: { ..._h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_hash: 'log-all-types-hash',
+        file_name: 'logs.csv',
+        clean_list: [
+          { phone: '+8613800138021', data: { name: '重复' } },
+          { phone: '+8613800138022', data: { name: '尝试覆盖' } },
+        ]
+      }),
+    })
+
+    const _json = await _res.json() as any
+    expect(_json.code).toBe(1)
+    expect(_json.data.results.map((r: any) => r.type)).toEqual(['skipped', 'frozen'])
+
+    const _logs = _sqlite.prepare('SELECT type, changes FROM contact_log WHERE import_id = ? ORDER BY contact_id ASC').all(_json.data.import_id) as any[]
+    expect(_logs.map((row) => row.type)).toEqual(['reimport', 'frozen_import'])
+    expect(JSON.parse(_logs[1].changes).reason).toContain('防写保护')
+
+    const _detailRes = await _app.request(`/api/import/${_json.data.import_id}`, { headers: _h })
+    const _detailJson = await _detailRes.json() as any
+    expect(_detailJson.data.details.map((row: any) => row.phone).sort()).toEqual([
+      '+8613800138021',
+      '+8613800138022',
+    ])
+  })
+
+  it('POST /api/import/sync → 单次 200 条分片正常返回逐行结果', async () => {
+    const _sqlite = createTestDB()
+    const _db = wrapAsD1(_sqlite)
+    const _app = createApp(_db)
+    const _h = await authHeader({ id: 10, role: 'manager' })
+    const cleanList = Array.from({ length: 200 }, (_, i) => ({
+      phone: `+86139000${String(i).padStart(5, '0')}`,
+      data: { name: `客户${i}` }
+    }))
+
+    const _res = await _app.request('/api/import/sync', {
+      method: 'POST',
+      headers: { ..._h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_hash: 'chunk-200-hash',
+        file_name: 'chunk.csv',
+        clean_list: cleanList
+      }),
+    })
+    const _json = await _res.json() as any
+
+    expect(_json.code).toBe(1)
+    expect(_json.data.chunk_size).toBe(200)
+    expect(_json.data.results).toHaveLength(200)
+    expect(_json.data.results.every((row: any) => row.type === 'added')).toBe(true)
+    expect((_sqlite.prepare('SELECT COUNT(*) as cnt FROM contact').get() as any).cnt).toBe(200)
+  })
+
   it('GET /api/import/verify-hash → 测试重复哈希拦截', async () => {
     const _sqlite = createTestDB()
     _sqlite.run(`INSERT INTO import_log (user_id, file, file_hash, total, frozen, skipped) VALUES (1, 'dup.csv', 'dummy_duplicate_hash', 10, 0, 0)`)

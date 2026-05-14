@@ -16,6 +16,7 @@ export const migrations: Migration[] = [
         added INTEGER DEFAULT 0, updated INTEGER DEFAULT 0,
         skipped INTEGER DEFAULT 0, frozen INTEGER DEFAULT 0,
         status TEXT DEFAULT 'syncing', import_id INTEGER,
+        error_message TEXT,
         created_at INTEGER NOT NULL
       )`)
       db.exec(`CREATE TABLE IF NOT EXISTS import_queue (
@@ -23,6 +24,7 @@ export const migrations: Migration[] = [
         batch_id TEXT NOT NULL, phone TEXT NOT NULL,
         data TEXT, changes TEXT, reason TEXT,
         sync_status TEXT DEFAULT 'pending', sync_type TEXT,
+        import_status TEXT DEFAULT 'undeveloped',
         file_name TEXT, created_at INTEGER NOT NULL
       )`)
       db.exec(
@@ -50,6 +52,17 @@ export const migrations: Migration[] = [
       // 保存清洗时的静态表头映射字典
       try {
         db.exec(`ALTER TABLE import_batch ADD COLUMN headers TEXT`)
+      } catch {}
+    }
+  },
+  {
+    version: 4,
+    up: (db) => {
+      try {
+        db.exec(`ALTER TABLE import_queue ADD COLUMN import_status TEXT DEFAULT 'undeveloped'`)
+      } catch {}
+      try {
+        db.exec(`ALTER TABLE import_batch ADD COLUMN error_message TEXT`)
       } catch {}
     }
   }

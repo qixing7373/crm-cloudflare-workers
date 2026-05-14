@@ -30,8 +30,12 @@ export const FieldDao = {
   },
 
   async updateSort(db: DB, id: number, sort: number, updatedBy: number) {
+    return FieldDao.updateSortQuery(db, id, sort, updatedBy, new Date())
+  },
+
+  updateSortQuery(db: DB, id: number, sort: number, updatedBy: number, updatedAt = new Date()) {
     return db.update(contactField)
-      .set({ sort, updated_at: new Date(), updated_by: updatedBy })
+      .set({ sort, updated_at: updatedAt, updated_by: updatedBy })
       .where(eq(contactField.id, id))
   },
 

@@ -6,13 +6,26 @@
   <n-layout class="!min-h-screen" has-sider>
     <!-- 侧边栏 -->
     <n-layout-sider :width="160" class="!z-10" bordered>
-      <n-flex align="center" justify="center" class="!h-14 !border-b !border-[var(--n-border-color)]">
-        <n-button quaternary size="small" @click="toggleLang" class="!font-medium">
-          {{ _current_lang === 'zh-CN' ? '🇨🇳 中文' : '🇺🇸 English' }}
-        </n-button>
-      </n-flex>
+      <div class="!flex !h-screen !flex-col">
+        <n-flex align="center" justify="center" class="!h-14 !shrink-0 !border-b !border-[var(--n-border-color)]">
+          <n-button quaternary size="small" @click="toggleLang" class="!font-medium">
+            {{ _current_lang === 'zh-CN' ? '🇨🇳 中文' : '🇺🇸 English' }}
+          </n-button>
+        </n-flex>
 
-      <n-menu v-model:value="selected_key" :options="menu_options" @update:value="handleMenuClick" />
+        <n-menu
+          v-model:value="selected_key"
+          :options="menu_options"
+          class="!min-h-0 !flex-1 !overflow-y-auto"
+          @update:value="handleMenuClick"
+        />
+
+        <div class="!shrink-0 !border-t !border-[var(--n-border-color)] !px-3 !py-2">
+          <n-text depth="3" class="!block !truncate !font-mono !text-[11px]" :title="`v${app_version}`">
+            v{{ app_version }}
+          </n-text>
+        </div>
+      </div>
     </n-layout-sider>
 
     <n-layout class="!min-w-[1024px] !overflow-x-auto">
@@ -94,20 +107,22 @@ import {
   CloudUploadOutline,
   DocumentTextOutline,
   HomeOutline,
+  KeyOutline,
   LogOutOutline,
   PersonOutline,
   PieChartOutline,
   SearchOutline,
   ServerOutline,
-  SettingsOutline,
-  KeyOutline
+  SettingsOutline
 } from '@vicons/ionicons5'
-import type { MenuOption, FormInst, FormRules } from 'naive-ui'
+import type { FormInst, FormRules, MenuOption } from 'naive-ui'
 import { NIcon, useMessage } from 'naive-ui'
-import { getInviteCode, changePassword } from '@/api/auth'
+import { changePassword, getInviteCode } from '@/api/auth'
+import { runIdle } from '@/utils/idle'
 
 const router = useRouter()
 const route = useRoute()
+const app_version = import.meta.env.PUBLIC_APP_VERSION || '0.0.0+dev'
 // ═══ 状态 ═══
 const selected_key = ref<string>('')
 const _current_lang = ref(document.documentElement.lang || 'zh-CN')
@@ -234,12 +249,14 @@ watch(
   { immediate: true }
 )
 
-onMounted(async () => {
+onMounted(() => {
   if (user().role_level >= 2) {
-    try {
-      const res = await getInviteCode()
-      if (res.code === 200 || res.code === 1) invite_code.value = res.data.code
-    } catch (e) {}
+    runIdle(async () => {
+      try {
+        const res = await getInviteCode()
+        if (res.code === 200 || res.code === 1) invite_code.value = res.data.code
+      } catch (e) {}
+    })
   }
 })
 </script>

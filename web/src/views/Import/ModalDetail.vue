@@ -28,7 +28,8 @@
 
 <script lang="ts" setup>
 import { CloudDownload } from '@vicons/ionicons5'
-import { countByBatchAndType, queryBatchRows, type BatchRecord } from '@/plugins/localDb'
+import { ImportApi, type ImportDetailRow } from '@/api/import'
+import { type BatchRecord, countByBatchAndType, queryBatchRows } from '@/plugins/localDb'
 
 const props = defineProps<{ show: boolean; batch: BatchRecord | null; initialTab?: string }>()
 const emit = defineEmits(['update:show'])
@@ -44,6 +45,8 @@ const size = ref(30)
 const rows = ref<any[]>([])
 const total = ref(0)
 const counts = ref<Record<string, number>>({})
+const cloudDetails = ref<any[]>([])
+const cloudDetailId = ref<number | null>(null)
 
 const TABS = [
   { name: 'pending', label: '待同步', type: 'default' },
@@ -60,6 +63,28 @@ const COLORS: Record<string, string> = {
   skipped: '#c36a00',
   frozen: '#a6203a'
 }
+const TYPE_MAP: Record<string, string> = {
+  create: 'added',
+  update: 'updated',
+  reimport: 'skipped',
+  frozen_import: 'frozen'
+}
+
+const isLocalBatch = computed(() => !!(props.batch as any)?._is_local)
+const parseJson = (value: any, fallback: any = {}) => {
+  try {
+    return value ? JSON.parse(value) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+const matchQuery = (row: any) => {
+  if (row.sync_type !== tab.value) return false
+  if (!query.value) return true
+  if (isTail.value) return String(row.phone || '').endsWith(query.value)
+  return `${row.phone} ${JSON.stringify(row._data)}`.toLowerCase().includes(query.value)
+}
 
 const tabInfo = computed(() => {
   const tDef = TABS.find((x) => x.name === tab.value) || TABS[0]
@@ -70,6 +95,10 @@ const load = async () => {
   if (!props.batch || !props.show) return
   loading.value = true
   try {
+    if (!isLocalBatch.value) {
+      await loadCloudRows()
+      return
+    }
     const id = props.batch.batch_id
     counts.value = await countByBatchAndType(id)
     const { total: tCount, rows: rList } = await queryBatchRows(
@@ -82,8 +111,8 @@ const load = async () => {
     )
     rows.value = rList.map((r) => ({
       ...r,
-      _data: r.data ? JSON.parse(r.data) : {},
-      _changes: r.changes ? JSON.parse(r.changes) : null
+      _data: parseJson(r.data),
+      _changes: parseJson(r.changes, null)
     }))
     total.value = tCount
   } finally {
@@ -91,23 +120,65 @@ const load = async () => {
   }
 }
 
-watch(
-  [tab, query, isTail, () => props.batch],
-  () => ((pg.value = 1), props.show && props.batch && load())
-)
-watch([pg, size], () => props.show && props.batch && load())
+async function loadCloudRows() {
+  if (!props.batch?.id) return
+  const importId = Number(props.batch.id)
+  if (cloudDetailId.value !== importId) {
+    const { data } = await ImportApi.fetchHistoryDetail(importId)
+    cloudDetails.value = (data?.details || []).map(mapCloudDetail)
+    cloudDetailId.value = importId
+  }
+  counts.value = {
+    added: Number((props.batch as any).added || 0),
+    updated: Number((props.batch as any).updated || 0),
+    skipped: Number((props.batch as any).skipped || 0),
+    frozen: Number((props.batch as any).frozen || 0),
+    pending: 0
+  }
+
+  const filtered = cloudDetails.value.filter(matchQuery)
+  total.value = filtered.length
+  rows.value = filtered.slice((pg.value - 1) * size.value, pg.value * size.value)
+}
+
+function mapCloudDetail(row: ImportDetailRow) {
+  const changes = parseJson(row.changes, null)
+  const reason = row.type === 'frozen_import' ? changes?.reason : null
+  return {
+    ...row,
+    id: row.id,
+    sync_status: 'synced',
+    sync_type: TYPE_MAP[row.type] || 'skipped',
+    reason,
+    _data: parseJson(row.data),
+    _changes: row.type === 'update' ? changes : null
+  }
+}
+
+watch([tab, query, isTail, () => props.batch], () => {
+  pg.value = 1
+  if (props.show && props.batch) void load()
+})
+watch([pg, size], () => {
+  if (props.show && props.batch) void load()
+})
 watch(
   () => props.show,
-  (s) => s && (props.initialTab && (tab.value = props.initialTab), props.batch && load())
+  (s) => {
+    if (!s) return
+    if (props.initialTab) tab.value = props.initialTab
+    if (props.batch) void load()
+  }
 )
 
-const doSearch = () => (query.value = q.value.trim().toLowerCase())
+function doSearch() {
+  query.value = q.value.trim().toLowerCase()
+}
 
 const fieldMap = computed(() => {
   if (!props.batch?.headers) return {}
   try {
-    const arr = JSON.parse(props.batch.headers)
-    return arr.reduce((acc: any, h: any) => ({ ...acc, [h.key]: h.label }), {})
+    return Object.fromEntries(parseJson(props.batch.headers, []).map((h: any) => [h.key, h.label]))
   } catch {
     return {}
   }
@@ -163,20 +234,20 @@ const escapeCsv = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"
 
 async function onDown() {
   if (!total.value || !props.batch) return
-  const { rows: rList } = await queryBatchRows(
-    props.batch.batch_id,
-    tab.value,
-    query.value,
-    isTail.value,
-    1e6,
-    0
-  )
+  const rList = isLocalBatch.value
+    ? (await queryBatchRows(props.batch.batch_id, tab.value, query.value, isTail.value, 1e6, 0))
+        .rows
+    : cloudDetails.value.filter(matchQuery)
   if (!rList.length) return
 
-  const out = rList.map((r) => ({ ...r, _data: r.data ? JSON.parse(r.data) : {} }))
+  const out = rList.map((r) => ({ ...r, _data: r._data || parseJson(r.data) }))
   const keys = Object.keys(out[0]._data || {})
   const isErr = tab.value === 'frozen'
-  const heads = [t('手机'), ...keys.map((k) => fieldMap.value[k] || k), ...(isErr ? [t('拦截原因')] : [])].join(',')
+  const heads = [
+    t('手机'),
+    ...keys.map((k) => fieldMap.value[k] || k),
+    ...(isErr ? [t('拦截原因')] : [])
+  ].join(',')
 
   const csv = [
     heads,

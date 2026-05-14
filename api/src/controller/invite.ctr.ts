@@ -16,9 +16,13 @@ const inviteRouter = new Hono<AppEnv>()
 inviteRouter.get('/code', requireRole('manager'), async (c) => {
   const _viewer = c.get('user')
   const _code = await generateInviteCode(_viewer.id, c.env.JWT_SECRET)
+  const _expires = new Date()
+  _expires.setUTCHours(24, 0, 0, 0)
 
   return success(c, {
-    code: _code
+    code: _code,
+    expires: _expires.toISOString(),
+    hint: '邀请码每日零点自动刷新'
   })
 })
 

@@ -3,12 +3,12 @@
  * @desc   分组 API 接口
  */
 import http from '@/plugins/axios'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, DateLike } from '@/types/api'
 
 export interface UserGroup {
   id: number
   name: string
-  created_at: string
+  created_at: DateLike | null
   member_count: number
 }
 

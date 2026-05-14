@@ -12,7 +12,11 @@ const importRouter = new Hono<AppEnv>()
 importRouter.post('/sync', requireRole('manager'), async (c) => {
   const _viewer = c.get('user')
   const { clean_list, file_name, file_hash, import_id } = await c.req.json() as {
-    clean_list: Array<{ phone: string; data: Record<string, unknown> }>
+    clean_list: Array<{
+      phone: string
+      data: Record<string, unknown>
+      status?: 'undeveloped' | 'developed'
+    }>
     file_name: string
     file_hash: string
     import_id?: number

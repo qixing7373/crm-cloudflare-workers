@@ -21,12 +21,12 @@
 
 <script lang="ts" setup>
 import { CloudDownload, PushOutline } from '@vicons/ionicons5'
-import { downloadTpl } from './useExport'
-import { parseAndClean } from './useParse'
 import { FieldApi } from '@/api/field'
 import { ImportApi } from '@/api/import'
-import { generateBatchId, insertImportData, checkBatchByHash } from '@/plugins/localDb'
+import { checkBatchByHash, generateBatchId, insertImportData } from '@/plugins/localDb'
 import { startSyncEngine } from '@/plugins/syncEngine'
+import { downloadTpl } from './useExport'
+import { parseAndClean } from './useParse'
 
 const emit = defineEmits(['success'])
 const t = inject('import-t') as any

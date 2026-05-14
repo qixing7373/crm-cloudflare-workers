@@ -3,7 +3,7 @@
  */
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, desc, sql, like, or, getTableColumns } from 'drizzle-orm'
-import { importLog, contactLog, user, userLog } from '@/schema'
+import { importLog, contactLog, user, userLog, contact } from '@/schema'
 import type { ImportLogDo } from '@/model/entity/import_log'
 import type { UserLogDo } from '@/model/entity/user_log'
 
@@ -43,12 +43,16 @@ export const ImportDao = {
       )
     }
 
+    const countQuery = opts.q
+      ? db.select({ cnt: sql<number>`COUNT(*)` })
+          .from(importLog)
+          .leftJoin(user, eq(importLog.user_id, user.id))
+          .where(_condition)
+          .get()
+      : db.select({ cnt: sql<number>`COUNT(*)` }).from(importLog).get()
+
     const [_total, _list] = await Promise.all([
-      db.select({ cnt: sql<number>`COUNT(*)` })
-        .from(importLog)
-        .leftJoin(user, eq(importLog.user_id, user.id))
-        .where(_condition)
-        .get(),
+      countQuery,
       db.select({
         ...getTableColumns(importLog),
         username: user.username,
@@ -64,7 +68,20 @@ export const ImportDao = {
   },
 
   async listDetailsByImportId(db: DB, importId: number) {
-    return db.select().from(contactLog)
+    return db.select({
+      id: contactLog.id,
+      contact_id: contactLog.contact_id,
+      user_id: contactLog.user_id,
+      import_id: contactLog.import_id,
+      type: contactLog.type,
+      changes: contactLog.changes,
+      created_at: contactLog.created_at,
+      phone: contact.phone,
+      data: contact.data,
+      status: contact.status,
+      owner_id: contact.owner_id,
+    }).from(contactLog)
+      .leftJoin(contact, eq(contactLog.contact_id, contact.id))
       .where(eq(contactLog.import_id, importId))
       .orderBy(desc(contactLog.id))
       .all()

@@ -3,16 +3,23 @@
  * @desc   用户 API 接口
  */
 import http from '@/plugins/axios'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, DateLike, EditableUserRole, UserRole, UserStatus } from '@/types/api'
 
 export interface UserItem {
   id: number
   username: string
-  role: 'staff' | 'manager' | 'superadmin'
+  role: UserRole
   group_id: number | null
   group_name?: string | null
-  status: 'active' | 'disabled'
-  created_at: string
+  status: UserStatus
+  created_at: DateLike | null
+}
+
+export interface CreateUserPayload {
+  username: string
+  password: string
+  role?: EditableUserRole
+  group_id?: number
 }
 
 export const UserApi = {
@@ -22,20 +29,23 @@ export const UserApi = {
   },
 
   /** 创建账号 */
-  create(data: { username: string; password: string; role?: string; group_id?: number }) {
+  create(data: CreateUserPayload) {
     return http.post<never, ApiResponse<{ id: number }>>('/api/user', data)
   },
 
   /** 审核/禁用 */
-  updateStatus(id: number, status: 'active' | 'disabled') {
-    return http.put<never, ApiResponse<{ id: number; status: string }>>(`/api/user/${id}/status`, {
-      status
-    })
+  updateStatus(id: number, status: UserStatus) {
+    return http.put<never, ApiResponse<{ id: number; status: UserStatus }>>(
+      `/api/user/${id}/status`,
+      {
+        status
+      }
+    )
   },
 
   /** 修改角色（超管可用） */
-  updateRole(id: number, role: 'staff' | 'manager' | 'superadmin') {
-    return http.put<never, ApiResponse<{ id: number; role: string }>>(`/api/user/${id}/role`, {
+  updateRole(id: number, role: UserRole) {
+    return http.put<never, ApiResponse<{ id: number; role: UserRole }>>(`/api/user/${id}/role`, {
       role
     })
   },

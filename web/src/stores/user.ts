@@ -5,17 +5,14 @@
 
 import { defineStore } from 'pinia'
 import { login as apiLogin, checkToken } from '@/api/auth'
+import type { UserSession } from '@/types/api'
 
 export default defineStore(
   'user',
   () => {
     // ═══ 状态 ═══
     const token = ref('')
-    const user_info = ref<{
-      id: number
-      username: string
-      role: string
-    } | null>(null)
+    const user_info = ref<UserSession | null>(null)
 
     // ═══ 计算属性 ═══
     const is_logged_in = computed(() => !!token.value)

@@ -10,6 +10,7 @@ import { ErrorCode } from '@/codes'
 import { AppError } from '@/hono/AppError'
 import { resolveInviteCode } from '@/utility/inviteCode'
 import { audit } from '@/utility/audit'
+import { encodeText, getHmacKey } from '@/utility/hmacKey'
 import type { RegisterInput, LoginInput } from '@/model/auth.dto'
 
 export async function hashPassword(plain: string): Promise<string> {
@@ -34,15 +35,8 @@ export async function makeToken(
 
   const _header_b64 = _encode(_header)
   const _payload_b64 = _encode(_payload)
-  const _data = new TextEncoder().encode(`${_header_b64}.${_payload_b64}`)
-
-  const _key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
+  const _data = encodeText(`${_header_b64}.${_payload_b64}`)
+  const _key = await getHmacKey(secret)
   const _sig = await crypto.subtle.sign('HMAC', _key, _data)
   const _sig_b64 = btoa(String.fromCharCode(...new Uint8Array(_sig)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -133,7 +127,13 @@ export async function loginUser(
 
   return {
     token: _token,
-    user: { id: _user.id, username: _user.username, role: _user.role },
+    user: {
+      id: _user.id,
+      username: _user.username,
+      role: _user.role,
+      status: _user.status,
+      group_id: _user.group_id,
+    },
   }
 }
 

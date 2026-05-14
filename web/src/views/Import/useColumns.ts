@@ -1,13 +1,13 @@
 import {
   AddCircle,
+  Copy,
   DocumentText,
+  EyeOutline,
   Layers,
   Person,
-  Copy,
   ShieldCheckmark,
   SyncCircle,
-  Time,
-  EyeOutline
+  Time
 } from '@vicons/ionicons5'
 import { computed } from 'vue'
 import type { MyTableColumn } from '@/components/MyTable.type'
@@ -22,7 +22,7 @@ export function useColumns({ t, onDetail }: ColumnOptions) {
   const btn = (type: any) => ({
     type,
     icon: EyeOutline,
-    isShow: (row: any) => row._is_local,
+    isShow: (row: any) => row._is_local || row.import_id || typeof row.id === 'number',
     onClick: onDetail
   })
 
@@ -61,6 +61,7 @@ export function useColumns({ t, onDetail }: ColumnOptions) {
       key: 'frozen',
       button: btn('error')
     },
+    { title: t('状态'), key: 'status', width: 90 },
     { title: t('时间'), icon: Time, key: 'created_at', timeFormat: true }
   ])
 }

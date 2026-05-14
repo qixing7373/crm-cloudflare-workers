@@ -7,6 +7,7 @@
 import { _t } from '@i18n'
 import { user } from '@pinia'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import Login from '@/views/Login.vue'
 
 const routeList: RouteRecordRaw[] = [
   {
@@ -32,7 +33,7 @@ const routeList: RouteRecordRaw[] = [
   {
     path: '/login',
     meta: { title: _t('登录'), public: true },
-    component: () => import('@/views/Login.vue')
+    component: Login
   },
   {
     path: '/logs',
@@ -83,7 +84,7 @@ function aliasCode(num: number) {
 }
 
 routeList.forEach((route, i) => {
-  const alias = '/' + aliasCode(i)
+  const alias = `/${aliasCode(i)}`
   route.alias = alias
   pathAliasMap.set(route.path as string, alias)
   modules.push(route)

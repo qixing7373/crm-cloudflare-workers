@@ -42,6 +42,8 @@ describe('GET /api/invite/code', () => {
     expect(_json.data.code).toBeDefined()
     expect(_json.data.code.length).toBe(6)
     expect(_json.data.expires).toBeDefined()
+    expect(Number.isNaN(Date.parse(_json.data.expires))).toBe(false)
+    expect(Date.parse(_json.data.expires)).toBeGreaterThan(Date.now())
     expect(_json.data.hint).toContain('零点')
   })
 

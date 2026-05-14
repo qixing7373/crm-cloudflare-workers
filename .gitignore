@@ -1,0 +1,10 @@
+telegram/
+.DS_Store
+.dev.vars
+!api/.dev.vars
+node_modules/
+dist/
+
+docs/pdf/
+*.csv
+tmp/

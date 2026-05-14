@@ -3,7 +3,7 @@
  * @desc   登录、注册、令牌校验
  */
 import http from '@/plugins/axios'
-import type { ApiResponse, LoginResult } from '@/types/api'
+import type { ApiResponse, LoginResult, UserSession } from '@/types/api'
 
 export function login(username: string, password: string) {
   return http.post<never, ApiResponse<LoginResult>>('/auth/login', {
@@ -21,11 +21,13 @@ export function register(username: string, password: string, invite_code: string
 }
 
 export function checkToken() {
-  return http.get<never, ApiResponse<{ id: number; username: string; role: string }>>('/auth/check')
+  return http.get<never, ApiResponse<UserSession>>('/auth/check')
 }
 
 export function getInviteCode() {
-  return http.get<never, ApiResponse<{ code: string }>>('/api/invite/code')
+  return http.get<never, ApiResponse<{ code: string; expires: string; hint: string }>>(
+    '/api/invite/code'
+  )
 }
 
 export function changePassword(old_password: string, new_password: string) {

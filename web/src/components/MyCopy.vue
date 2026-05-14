@@ -26,10 +26,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { t } from '@i18n'
 import { CopyOutline } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
-import { t } from '@i18n'
+import { computed } from 'vue'
 
 const props = defineProps<{
   text: string | number

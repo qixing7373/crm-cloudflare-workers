@@ -9,6 +9,7 @@
  *   - 签名防伪造：篡改任意一位都会导致验签失败
  *   - 每日轮换：mask 和签名均含日期因子，昨日码今日失效
  */
+import { encodeText, getHmacKey } from '@/utility/hmacKey'
 
 /**
  * 生成邀请码
@@ -19,7 +20,7 @@ export async function generateInviteCode(
   date?: string,
 ): Promise<string> {
   const _date = date || _today()
-  const _key = await _importKey(secret)
+  const _key = await getHmacKey(secret)
   
   const _mask = await _deriveMask(_key, _date)
   const _scrambled = (user_id ^ _mask) >>> 0
@@ -45,7 +46,7 @@ export async function resolveInviteCode(
   const _sig_part = _upper.slice(3, 6)
 
   const _date = date || _today()
-  const _key = await _importKey(secret)
+  const _key = await getHmacKey(secret)
   
   const _mask = await _deriveMask(_key, _date)
   const _scrambled = parseInt(_id_part, 36)
@@ -71,7 +72,7 @@ function _today(): string {
 async function _deriveMask(key: CryptoKey, date: string): Promise<number> {
   const _sig = await crypto.subtle.sign(
     'HMAC', key,
-    new TextEncoder().encode(`mask:${date}`),
+    encodeText(`mask:${date}`),
   )
   const _bytes = new Uint8Array(_sig)
   // 取 3 字节，mod 46656 确保在 base36 3位范围内
@@ -82,19 +83,9 @@ async function _deriveMask(key: CryptoKey, date: string): Promise<number> {
 async function _sign(user_id: number, key: CryptoKey, date: string): Promise<string> {
   const _sig = await crypto.subtle.sign(
     'HMAC', key,
-    new TextEncoder().encode(`invite:${user_id}:${date}`),
+    encodeText(`invite:${user_id}:${date}`),
   )
   const _bytes = new Uint8Array(_sig)
   const _num = (_bytes[0] << 16 | _bytes[1] << 8 | _bytes[2]) >>> 0
   return _num.toString(36).toUpperCase().padStart(4, '0').slice(0, 3)
-}
-
-async function _importKey(secret: string) {
-  return crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
 }

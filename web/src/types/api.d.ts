@@ -16,35 +16,49 @@ export interface PaginateResponse<T = unknown> {
   data: {
     list: T[]
     total_count: number
+    total?: number
     page_index: number
     page_size: number
   }
 }
 
+export type DateLike = string | number | Date
+export type UserRole = 'staff' | 'manager' | 'superadmin'
+export type EditableUserRole = 'staff' | 'manager'
+export type UserStatus = 'active' | 'disabled'
+export type ContactStatus = 'undeveloped' | 'developed'
+
 // ── 用户 ──
-export interface UserInfo {
+export interface UserSession {
   id: number
   username: string
-  role: 'staff' | 'manager' | 'superadmin'
+  role: UserRole
   group_id: number | null
-  status: 'active' | 'disabled'
-  created_at: string | null
+  status: UserStatus
+}
+
+export interface UserInfo extends UserSession {
+  created_at?: DateLike | null
 }
 
 export interface LoginResult {
   token: string
-  user: { id: number; username: string; role: string }
+  user: UserSession
 }
 
 // ── 联系人 ──
 export interface ContactRow {
   id: number
   phone: string | null
-  status: 'undeveloped' | 'developed'
+  status: ContactStatus
   owner_id: number | null
-  data: string
-  claimed_at: string | null
+  data: string | Record<string, unknown>
+  claimed_at: DateLike | null
   import_count: number | null
+  first_imported_at?: DateLike | null
+  latest_imported_at?: DateLike | null
+  created_at?: DateLike | null
+  updated_at?: DateLike | null
   _is_masked?: boolean
   _private_owner?: number | null
 }
@@ -53,7 +67,7 @@ export interface ContactRow {
 export interface GroupRow {
   id: number
   name: string
-  created_at: string | null
+  created_at: DateLike | null
   member_count: number
 }
 

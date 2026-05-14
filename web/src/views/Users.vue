@@ -88,7 +88,8 @@ import type { DataTableColumns, FormInst, FormRules } from 'naive-ui'
 import { NButton, NFlex, NIcon, NPopconfirm, NTag, NText } from 'naive-ui'
 import { h } from 'vue'
 import { GroupApi } from '@/api/group'
-import { UserApi, type UserItem } from '@/api/user'
+import { type CreateUserPayload, UserApi, type UserItem } from '@/api/user'
+import type { EditableUserRole, UserRole } from '@/types/api'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -166,7 +167,11 @@ async function handleStatusChange(row: UserItem, status: 'active' | 'disabled') 
 
 // 高级调整 (仅超管)
 const show_edit_modal = ref(false)
-const edit_temp = ref({ id: 0, role: '', group_id: 0 as number | null })
+const edit_temp = ref<{ id: number; role: UserRole; group_id: number | null }>({
+  id: 0,
+  role: 'staff',
+  group_id: null
+})
 
 function openAdvancedEdit(row: UserItem) {
   edit_temp.value = { id: row.id, role: row.role, group_id: row.group_id }
@@ -180,7 +185,7 @@ async function submitEditAdvanced() {
     const _row = user_list.value.find((u) => u.id === edit_temp.value.id)
     if (!_row) return
     if (edit_temp.value.role !== _row.role) {
-      promises.push(UserApi.updateRole(_row.id, edit_temp.value.role as any))
+      promises.push(UserApi.updateRole(_row.id, edit_temp.value.role))
     }
     if (edit_temp.value.group_id !== _row.group_id && edit_temp.value.group_id) {
       promises.push(UserApi.updateGroup(_row.id, edit_temp.value.group_id))
@@ -292,7 +297,7 @@ const columns = computed<DataTableColumns<UserItem>>(() => {
               }
             )
           )
-        } else if (row.id !== user().id) {
+        } else if (row.id !== user().user_info?.id) {
           // Cannot ban oneself
           acts.push(
             h(
@@ -379,7 +384,7 @@ const saving = ref(false)
 const form_ref = ref<FormInst | null>(null)
 const form_data = ref({
   username: '',
-  role: 'staff',
+  role: 'staff' as EditableUserRole,
   group_id: null as number | null
 })
 const rules: FormRules = {
@@ -417,8 +422,13 @@ function handleCreate() {
       saving.value = true
       try {
         const randomPwd = generateRandomPassword()
-        const payload = { ...form_data.value, password: randomPwd }
-        const res = await UserApi.create(payload as any)
+        const payload: CreateUserPayload = {
+          username: form_data.value.username,
+          password: randomPwd,
+          role: form_data.value.role
+        }
+        if (form_data.value.group_id) payload.group_id = form_data.value.group_id
+        const res = await UserApi.create(payload)
         if (res.code === 201 || res.code === 1 || res.code === 200) {
           dialog.success({
             title: '新建账号成功',

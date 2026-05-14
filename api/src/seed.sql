@@ -20,4 +20,4 @@ INSERT OR IGNORE INTO user_group (id, name) VALUES
 (1, '系统管理部');
 
 INSERT OR IGNORE INTO user (id, username, password, role, group_id, status) VALUES 
-(1, 'admin', '$2a$10$C82aZ9m/pLz/8q/q4J/EHeNKVrA1v2X9t0rM6C7Y4h9P5nB3s3T.a', 'superadmin', 1, 'active');
+(1, 'admin', '$2a$10$OLxQzA22HnAKHcZoeCWEPOI8GMZd6Lcqo0Q..QcmDXvDNuEUyIxES', 'superadmin', 1, 'active');

@@ -33,8 +33,8 @@ import { t } from '@i18n'
 import { AddOutline } from '@vicons/ionicons5'
 import { NButton, NCard, NDataTable, NFlex, NIcon } from 'naive-ui'
 import { type ContactField, FieldApi } from '@/api/field'
+import type FieldDrawer from './FieldDrawer.vue'
 import { useColumns } from './useColumns'
-import FieldDrawer from './FieldDrawer.vue'
 
 provide('field-t', t)
 

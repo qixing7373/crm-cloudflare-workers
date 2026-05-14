@@ -5,6 +5,11 @@
   "scripts": {
     "dev": "wrangler dev --ip 127.0.0.1",
     "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply crm-api --local",
+    "db:migrate:remote": "wrangler d1 migrations apply crm-api --remote",
+    "db:seed:local": "wrangler d1 execute crm-api --local --file src/seed.sql",
+    "db:seed:remote": "wrangler d1 execute crm-api --remote --file src/seed.sql",
+    "smoke:prod": "bun ../scripts/smoke-production.mjs",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "db:generate": "drizzle-kit generate",

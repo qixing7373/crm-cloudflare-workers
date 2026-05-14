@@ -1,6 +1,6 @@
 /**
  * @file   index.css — 全局样式
- * @desc   Tailwind v4 + 过渡动画 + 全局网格背景
+ * @desc   Tailwind v4 + 过渡动画 + 全局基础样式
  */
 @layer theme, base, components, utilities;
 
@@ -24,10 +24,7 @@ body,
     "Microsoft YaHei", "微软雅黑", sans-serif;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
-  background:
-    repeating-linear-gradient(0deg, transparent, transparent 11px, #f5f5f5 11px, #f5f5f5 12px),
-    repeating-linear-gradient(90deg, transparent, transparent 11px, #f5f5f5 11px, #f5f5f5 12px);
-  background-color: white !important;
+  background-color: #f8fafc !important;
 }
 
 /* 强制解除 Naive UI layout 容器对左侧阴影的截断限制 */

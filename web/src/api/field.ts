@@ -5,17 +5,29 @@
 import http from '@/plugins/axios'
 import type { ApiResponse } from '@/types/api'
 
+export type ContactFieldType = 'text' | 'number' | 'select' | 'phone' | 'date' | 'boolean'
+
 export interface ContactField {
   id: number
   key: string
   label: string
   label_en: string | null
-  type: 'text' | 'number' | 'select' | 'phone' | 'date' | 'boolean'
+  type: ContactFieldType
   options: string | null
   required: boolean
   editable: boolean
   enabled: boolean
   sort: number
+}
+
+export interface ContactFieldPayload {
+  key: string
+  label: string
+  label_en?: string | null
+  type?: ContactFieldType
+  options?: string | null
+  required?: boolean
+  editable?: boolean
 }
 
 export const FieldApi = {
@@ -25,12 +37,12 @@ export const FieldApi = {
   },
 
   /** 新建字段配置 */
-  create(data: Omit<ContactField, 'id' | 'enabled' | 'sort'>) {
+  create(data: ContactFieldPayload) {
     return http.post<never, ApiResponse<ContactField>>('/api/field', data)
   },
 
   /** 编辑属性 (Key不能修改) */
-  update(id: number, data: Partial<Omit<ContactField, 'id' | 'key'>>) {
+  update(id: number, data: Partial<Omit<ContactFieldPayload, 'key'>>) {
     return http.put<never, ApiResponse<{ id: number }>>(`/api/field/${id}`, data)
   },
 

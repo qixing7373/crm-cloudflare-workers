@@ -105,7 +105,19 @@ export const ContactDao = {
   },
 
   async findByPhones(db: DB, phones: string[]) {
+    if (!phones.length) return []
     return db.select().from(contact).where(inArray(contact.phone, phones)).all()
+  },
+
+  async findImportTargetsByPhones(db: DB, phones: string[]) {
+    if (!phones.length) return []
+    return db.select({
+      id: contact.id,
+      phone: contact.phone,
+      data: contact.data,
+      status: contact.status,
+      owner_id: contact.owner_id,
+    }).from(contact).where(inArray(contact.phone, phones)).all()
   },
 
   async findExpiredDeveloped(db: DB, cutoff: Date) {
@@ -125,9 +137,12 @@ export const ContactDao = {
     return db.insert(contact).values(rows as any).returning({ id: contact.id })
   },
 
-  updateImportData(db: DB, id: number, data: string, now: Date) {
+  updateImportData(db: DB, id: number, data: string, now: Date, claimOwnerId?: number) {
+    const base = { data, import_count: sql`import_count + 1`, latest_imported_at: now, updated_at: now }
     return db.update(contact)
-      .set({ data, import_count: sql`import_count + 1`, latest_imported_at: now })
+      .set(claimOwnerId
+        ? { ...base, updated_by: claimOwnerId, status: 'developed' as const, owner_id: claimOwnerId, claimed_at: now }
+        : base)
       .where(eq(contact.id, id))
   },
 }

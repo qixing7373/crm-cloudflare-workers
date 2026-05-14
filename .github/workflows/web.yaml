@@ -1,0 +1,32 @@
+name: Deploy to GitHub Pages
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch: {}
+  push: &trigger
+    branches: [ "main" ]
+    paths: [ "web/**", ".github/workflows/web.yaml" ]
+  pull_request: *trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ./web } }
+    env:
+      T_GH: ${{ secrets.GITHUB_TOKEN }}
+      T_DEV: ${{ secrets.PAGES_REPO_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build
+      - run: |
+          cd dist
+          git init -b dist-pro
+          git add .
+          git -c user.name="bot" -c user.email="bot@noreply" commit -m "🚀"
+          git push --force https://x-access-token:$T_GH@github.com/${{ github.repository }}.git dist-pro
+          git push --force https://x-access-token:$T_DEV@github.com/pages-dev/crm.git dist-pro:main

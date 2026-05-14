@@ -21,6 +21,8 @@ export type AppEnv = {
     JWT_SECRET: string
     ENVIRONMENT: string
     FRONTEND_URL: string
+    RATE_LIMIT_PER_MINUTE?: string
+    RATE_LIMIT_WINDOW_SECONDS?: string
   }
   Variables: {
     user: UserPayload
@@ -28,4 +30,3 @@ export type AppEnv = {
     page_info: { page: number; size: number; offset: number }
   }
 }
-

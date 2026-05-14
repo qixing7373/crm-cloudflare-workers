@@ -71,15 +71,31 @@
 </template>
 
 <script lang="ts" setup>
-import { NButton, NDatePicker, NDrawer, NDrawerContent, NFlex, NForm, NFormItem, NInput, NInputNumber, NRadio, NRadioGroup, NSelect, NSpace, NSwitch } from 'naive-ui'
 import { t } from '@i18n'
+import {
+  NButton,
+  NDatePicker,
+  NDrawer,
+  NDrawerContent,
+  NFlex,
+  NForm,
+  NFormItem,
+  NInput,
+  NInputNumber,
+  NRadio,
+  NRadioGroup,
+  NSelect,
+  NSpace,
+  NSwitch
+} from 'naive-ui'
 import type { ContactField } from '@/api/field'
+import type { ContactStatus } from '@/types/api'
 import { parseOpts } from './useColumns'
 
 defineProps<{
   show: boolean
   saving: boolean
-  form: { phone: string; status: string; data: Record<string, any> }
+  form: { phone: string; status: ContactStatus; data: Record<string, unknown> }
   fields: ContactField[]
 }>()
 

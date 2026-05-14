@@ -1,6 +1,7 @@
-import * as Comlink from 'comlink'
-import sqlite3InitModule from '@sqlite.org/sqlite-wasm'
 import type { Database } from '@sqlite.org/sqlite-wasm'
+import sqlite3InitModule from '@sqlite.org/sqlite-wasm'
+import * as Comlink from 'comlink'
+import type { ImportCleanRow, ImportSyncType } from '@/api/import'
 import { runMigrations } from './localDb.migrations'
 
 let db: Database | null = null
@@ -66,7 +67,7 @@ const dbApi = {
     fileName: string,
     fileHash: string,
     total: number,
-    rows: Array<{ phone: string; data: Record<string, any> }>,
+    rows: ImportCleanRow[],
     headers?: any[]
   ) {
     const now = Date.now()
@@ -76,12 +77,19 @@ const dbApi = {
         sql: `INSERT INTO import_batch (batch_id, file_name, file_hash, total, headers, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
         bind: [batchId, fileName, fileHash, total, headers ? JSON.stringify(headers) : null, now]
       })
-      rows.forEach((row) =>
+      rows.forEach((row) => {
         db!.exec({
-          sql: `INSERT INTO import_queue (batch_id, phone, data, file_name, created_at) VALUES (?, ?, ?, ?, ?)`,
-          bind: [batchId, row.phone, JSON.stringify(row.data), fileName, now]
+          sql: `INSERT INTO import_queue (batch_id, phone, data, import_status, file_name, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          bind: [
+            batchId,
+            row.phone,
+            JSON.stringify(row.data),
+            row.status || 'undeveloped',
+            fileName,
+            now
+          ]
         })
-      )
+      })
       db!.exec('COMMIT')
     } catch (e) {
       db!.exec('ROLLBACK')
@@ -109,8 +117,11 @@ const dbApi = {
   markBatchDone(batchId: string) {
     db!.exec({ sql: `UPDATE import_batch SET status='done' WHERE batch_id=?`, bind: [batchId] })
   },
-  markBatchError(batchId: string) {
-    db!.exec({ sql: `UPDATE import_batch SET status='error' WHERE batch_id=?`, bind: [batchId] })
+  markBatchError(batchId: string, reason?: string) {
+    db!.exec({
+      sql: `UPDATE import_batch SET status='error', error_message=? WHERE batch_id=?`,
+      bind: [reason || null, batchId]
+    })
   },
 
   listBatches() {
@@ -127,10 +138,12 @@ const dbApi = {
     ])
   },
 
-  markRowsSynced(results: Array<{ id: number; type: string; changes?: any; reason?: string }>) {
+  markRowsSynced(
+    results: Array<{ id: number; type: ImportSyncType; changes?: unknown; reason?: string }>
+  ) {
     db!.exec('BEGIN TRANSACTION')
     try {
-      results.forEach((record) =>
+      results.forEach((record) => {
         db!.exec({
           sql: `UPDATE import_queue SET sync_status='synced', sync_type=?, changes=?, reason=? WHERE id=?`,
           bind: [
@@ -140,7 +153,7 @@ const dbApi = {
             record.id
           ]
         })
-      )
+      })
       db!.exec('COMMIT')
     } catch (e) {
       db!.exec('ROLLBACK')
@@ -206,8 +219,8 @@ const dbApi = {
       }
     }
 
-    const countRes = query<{ cnt: number }>(`SELECT COUNT(*) as cnt` + sql, params)
-    const rows = query(`SELECT *` + sql + ` ORDER BY id ASC LIMIT ? OFFSET ?`, [
+    const countRes = query<{ cnt: number }>(`SELECT COUNT(*) as cnt${sql}`, params)
+    const rows = query(`SELECT *${sql} ORDER BY id ASC LIMIT ? OFFSET ?`, [
       ...params,
       limit,
       offset

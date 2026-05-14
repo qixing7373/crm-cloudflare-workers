@@ -1,5 +1,6 @@
-import { ref } from 'vue'
 import * as Comlink from 'comlink'
+import { ref } from 'vue'
+import type { ImportCleanRow, ImportSyncType } from '@/api/import'
 import type { DbApi } from './localDb.worker'
 
 let _remote: Comlink.Remote<DbApi> | null = null
@@ -41,6 +42,7 @@ export interface BatchRecord {
   status: string
   import_id: number | null
   headers?: string
+  error_message?: string | null
   created_at: number
 }
 
@@ -53,6 +55,7 @@ export interface QueueRow {
   reason: string | null
   sync_status: string
   sync_type: string | null
+  import_status: 'undeveloped' | 'developed'
   file_name: string
   created_at: number
 }
@@ -66,7 +69,7 @@ export const insertImportData = (
   fileName: string,
   fileHash: string,
   total: number,
-  rows: Array<{ phone: string; data: Record<string, any> }>,
+  rows: ImportCleanRow[],
   headers?: any[]
 ) => api().insertImportData(batchId, fileName, fileHash, total, rows, headers)
 export const updateBatchImportId = (batchId: string, importId: number) =>
@@ -76,7 +79,8 @@ export const updateBatchProgress = (
   counts: { added: number; updated: number; skipped: number; frozen: number; synced: number }
 ) => api().updateBatchProgress(batchId, counts)
 export const markBatchDone = (batchId: string) => api().markBatchDone(batchId)
-export const markBatchError = (batchId: string) => api().markBatchError(batchId)
+export const markBatchError = (batchId: string, reason?: string) =>
+  api().markBatchError(batchId, reason)
 export const listBatches = () => api().listBatches() as Promise<BatchRecord[]>
 export const listSyncingBatches = () => api().listSyncingBatches() as Promise<BatchRecord[]>
 
@@ -85,7 +89,7 @@ export const listSyncingBatches = () => api().listSyncingBatches() as Promise<Ba
 export const getPendingRows = (batchId: string, limit: number) =>
   api().getPendingRows(batchId, limit) as Promise<QueueRow[]>
 export const markRowsSynced = (
-  results: Array<{ id: number; type: string; changes?: any; reason?: string }>
+  results: Array<{ id: number; type: ImportSyncType; changes?: unknown; reason?: string }>
 ) => api().markRowsSynced(results)
 export const getRowsByBatchAndType = (
   batchId: string,

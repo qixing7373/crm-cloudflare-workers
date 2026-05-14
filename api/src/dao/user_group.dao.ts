@@ -13,8 +13,11 @@ export const GroupDao = {
       id: userGroup.id,
       name: userGroup.name,
       created_at: userGroup.created_at,
-      member_count: sql<number>`(SELECT COUNT(*) FROM user WHERE user.group_id = user_group.id)`,
-    }).from(userGroup).all()
+      member_count: sql<number>`COUNT(${user.id})`,
+    }).from(userGroup)
+      .leftJoin(user, eq(user.group_id, userGroup.id))
+      .groupBy(userGroup.id)
+      .all()
   },
 
   async findByName(db: DB, name: string) {

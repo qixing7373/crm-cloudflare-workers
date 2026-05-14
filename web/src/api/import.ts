@@ -3,7 +3,17 @@
  * @desc   获取合并历史、验证 Hash、同步数据等
  */
 import http from '@/plugins/axios'
-import type { ApiResponse, PaginateResponse } from '@/types/api'
+import type { ApiResponse, ContactStatus, DateLike, PaginateResponse } from '@/types/api'
+
+export type ImportChangeMap = Record<string, { old: unknown; new: unknown }>
+export type ImportSyncType = 'added' | 'updated' | 'skipped' | 'frozen'
+export type ImportLogType = 'create' | 'update' | 'reimport' | 'frozen_import'
+
+export interface ImportCleanRow {
+  phone: string
+  data: Record<string, unknown>
+  status?: ContactStatus
+}
 
 export interface ImportHistoryRow {
   id: number
@@ -16,7 +26,33 @@ export interface ImportHistoryRow {
   added: number
   updated: number
   username?: string
-  created_at: number
+  created_at: DateLike | null
+}
+
+export interface ImportSyncResult {
+  phone: string
+  type: ImportSyncType
+  changes?: ImportChangeMap
+  reason?: string
+}
+
+export interface ImportDetailRow {
+  id: number
+  contact_id: number
+  user_id: number
+  import_id: number
+  type: ImportLogType
+  changes: string | null
+  created_at: DateLike | null
+  phone: string | null
+  data: string | null
+  status: ContactStatus | null
+  owner_id: number | null
+}
+
+export interface ImportDetailResponse {
+  log: ImportHistoryRow
+  details: ImportDetailRow[]
 }
 
 export const ImportApi = {
@@ -42,7 +78,7 @@ export const ImportApi = {
    * 同步增量数据到服务器
    */
   sync(payload: {
-    clean_list: Array<{ phone: string; data: Record<string, any> }>
+    clean_list: ImportCleanRow[]
     file_name: string
     file_hash: string
     import_id?: number
@@ -51,7 +87,8 @@ export const ImportApi = {
       never,
       ApiResponse<{
         import_id: number
-        results: Array<{ type: string; changes?: any; reason?: string }>
+        results: ImportSyncResult[]
+        chunk_size: number
       }>
     >('/api/import/sync', payload)
   },
@@ -60,6 +97,6 @@ export const ImportApi = {
    * 获取单次导入任务的详细云端变更日志
    */
   fetchHistoryDetail(id: number) {
-    return http.get<never, ApiResponse<any>>(`/api/import/${id}`)
+    return http.get<never, ApiResponse<ImportDetailResponse>>(`/api/import/${id}`)
   }
 }

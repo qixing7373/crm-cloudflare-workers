@@ -8,11 +8,6 @@ import i18n from '@i18n'
 import { user } from '@pinia'
 import type { AxiosInstance } from 'axios'
 import axios from 'axios'
-import { createDiscreteApi } from 'naive-ui'
-
-const { message } = createDiscreteApi(['message'], {
-  messageProviderProps: { max: 1 }
-})
 
 const http: AxiosInstance = axios.create({
   // 开发环境默认用 '/' 走 rsbuild 代理，正式环境通过 PUBLIC_API_URL 注入
@@ -36,6 +31,16 @@ function deepTrim(obj: any): any {
     return cloned
   }
   return obj
+}
+
+function translateMessage(msg: unknown) {
+  const text = typeof msg === 'string' && msg ? msg : '服务器内部错误'
+  const translated = i18n.t(text)
+  return translated === text ? text : translated
+}
+
+function emitHttpError(text: string) {
+  window.dispatchEvent(new CustomEvent('crm:http-error', { detail: text }))
 }
 
 // ── 请求拦截：自动注入 JWT 与全局数据清洗 ──
@@ -62,15 +67,14 @@ http.interceptors.response.use(
         window.location.href = '/login'
       }
       // 采用 Natural Language Keys 翻译返回的原生英文错误信息
-      const _translated = i18n.t(msg)
-      message.error(_translated === msg ? msg : _translated)
+      emitHttpError(translateMessage(msg))
       return Promise.reject(res.data)
     }
     return res.data
   },
-  () => {
-    message.error(i18n.t('服务器内部错误'))
-    return Promise.reject()
+  (error) => {
+    emitHttpError(translateMessage('服务器内部错误'))
+    return Promise.reject(error)
   }
 )
 

@@ -279,6 +279,18 @@ describe('PUT /api/contact/transfer', () => {
     const _json = await _res.json() as any
     expect(_json.code).toBe(1)
   })
+
+  it('PUT /api/contact/transfer 不会被 /:id 动态路由吞掉', async () => {
+    const _db = wrapAsD1(createTestDB())
+    const _app = createApp(_db)
+    const _h = await authHeader({ id: 1, role: 'manager', group_id: 1 })
+    const _res = await _app.request('/api/contact/transfer', {
+      method: 'PUT', headers: _h,
+      body: JSON.stringify({ from_user_id: 10, to_user_id: 20, scope: 'undeveloped' }),
+    })
+    const _json = await _res.json() as any
+    expect(_json.code).toBe(1)
+  })
 })
 
 // ═══ DELETE /api/contact/:id — 删除 ═══

@@ -31,8 +31,8 @@
 </template>
 
 <script lang="ts" setup>
-import { SearchOutline } from '@vicons/ionicons5'
 import { t } from '@i18n'
+import { SearchOutline } from '@vicons/ionicons5'
 import { useThemeVars } from 'naive-ui'
 
 const val = defineModel<string>('value')

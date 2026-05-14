@@ -1,31 +1,133 @@
 <template>
-  <div class="!w-full !h-full">
-    <n-card :bordered="false" class="!h-full !shadow !rounded-xl">
-      <template #header>
-        <n-flex align="center" justify="space-between">
-          <n-text class="!text-xl !font-bold">工作台 (Workbench)</n-text>
-          <n-tag type="warning">完善中 (Under Construction)</n-tag>
-        </n-flex>
-      </template>
-
-      <n-empty description="核心业务模块开发中..." class="!mt-20">
-        <template #extra>
-          <n-flex vertical align="center" :size="24" class="!mt-4 !w-full !max-w-3xl !mx-auto">
-            <n-alert title="工作台功能建设展望" type="info" :show-icon="true" class="!w-full !text-left">
-              工作台扮演着数据中枢与业务驱动引擎的核心角色，旨在为不同角色提供智能化的决策支持与异常拦截：
-              <ul class="!list-disc !ml-5 !mt-2 !space-y-1">
-                <li><strong>管理视图 (Executive Dashboard)：</strong> 实时呈现全局资源流转链路，宏观监控核心转化率、资产留存率及资源投入产出比（ROI）。</li>
-                <li><strong>业务视图 (Operational Board)：</strong> 聚焦一线资产跟进周期，自动化推送 SLA 告警（如逾期未联络资源退回公海倒计时），驱动闭环高效落地。</li>
-                <li><strong>安全风控巡检 (Risk Auditing)：</strong> 基于行为埋点的大数据模型，前置预警诸如高频越权巡查、规模化数据爬取等高危行为。</li>
-              </ul>
-            </n-alert>
-          </n-flex>
-        </template>
-      </n-empty>
+  <n-flex vertical :size="16">
+    <n-card :bordered="false" class="!shadow !rounded-xl">
+      <n-flex align="center" justify="space-between">
+        <div>
+          <n-text class="!text-xl !font-bold">工作台</n-text>
+          <div class="!text-sm !text-gray-500 !mt-1">全局资源概览、近期导入和系统动作</div>
+        </div>
+        <n-button type="primary" :loading="loading" @click="loadData">刷新</n-button>
+      </n-flex>
     </n-card>
-  </div>
+
+    <n-grid :cols="4" :x-gap="16" :y-gap="16">
+      <n-gi>
+        <n-card :bordered="false" class="!shadow !rounded-xl">
+          <n-statistic label="总客户" :value="overview?.total ?? 0" />
+        </n-card>
+      </n-gi>
+      <n-gi>
+        <n-card :bordered="false" class="!shadow !rounded-xl">
+          <n-statistic label="已开发" :value="overview?.developed ?? 0" />
+        </n-card>
+      </n-gi>
+      <n-gi>
+        <n-card :bordered="false" class="!shadow !rounded-xl">
+          <n-statistic label="未开发" :value="overview?.undeveloped ?? 0" />
+        </n-card>
+      </n-gi>
+      <n-gi>
+        <n-card :bordered="false" class="!shadow !rounded-xl">
+          <n-statistic label="开发率" :value="overview?.develop_rate ?? '0%'" />
+        </n-card>
+      </n-gi>
+    </n-grid>
+
+    <n-grid :cols="2" :x-gap="16" :y-gap="16">
+      <n-gi>
+        <n-card title="近期导入" :bordered="false" class="!shadow !rounded-xl">
+          <n-data-table
+            :columns="importColumns"
+            :data="imports"
+            :loading="loading"
+            :pagination="false"
+            :row-key="(row) => row.id"
+          />
+        </n-card>
+      </n-gi>
+      <n-gi>
+        <n-card title="近期动作" :bordered="false" class="!shadow !rounded-xl">
+          <n-data-table
+            :columns="logColumns"
+            :data="logs"
+            :loading="loading"
+            :pagination="false"
+            :row-key="(row) => row.id"
+          />
+        </n-card>
+      </n-gi>
+    </n-grid>
+  </n-flex>
 </template>
 
 <script lang="ts" setup>
-import { NAlert, NCard, NEmpty, NFlex, NTag, NText } from 'naive-ui'
+import { NTime } from 'naive-ui'
+import { h } from 'vue'
+import { ImportApi, type ImportHistoryRow } from '@/api/import'
+import { LogApi, type UserLogRow } from '@/api/log'
+import { StatApi } from '@/api/stat'
+import type { StatOverview } from '@/types/api'
+
+const message = useMessage()
+const loading = ref(false)
+const overview = ref<StatOverview | null>(null)
+const imports = ref<ImportHistoryRow[]>([])
+const logs = ref<UserLogRow[]>([])
+
+function toTime(value: unknown) {
+  if (typeof value === 'number') return value < 1e12 ? value * 1000 : value
+  return value ? new Date(value as string).getTime() : Date.now()
+}
+
+const importColumns = [
+  { title: '文件', key: 'file', minWidth: 180, ellipsis: { tooltip: true } },
+  { title: '总数', key: 'total', width: 80, align: 'center' },
+  { title: '新增', key: 'added', width: 80, align: 'center' },
+  { title: '更新', key: 'updated', width: 80, align: 'center' },
+  {
+    title: '时间',
+    key: 'created_at',
+    width: 170,
+    render(row: ImportHistoryRow) {
+      return row.created_at
+        ? h(NTime, { time: toTime(row.created_at), format: 'yyyy-MM-dd HH:mm' })
+        : '-'
+    }
+  }
+]
+
+const logColumns = [
+  { title: '用户', key: 'user_id', width: 80, align: 'center' },
+  { title: '动作', key: 'action', width: 120, align: 'center' },
+  {
+    title: '时间',
+    key: 'created_at',
+    width: 170,
+    render(row: UserLogRow) {
+      return row.created_at
+        ? h(NTime, { time: toTime(row.created_at), format: 'yyyy-MM-dd HH:mm' })
+        : '-'
+    }
+  }
+]
+
+async function loadData() {
+  loading.value = true
+  try {
+    const [overviewRes, importRes, logRes] = await Promise.all([
+      StatApi.fetchOverview(),
+      ImportApi.fetchHistory({ page: 1, size: 5 }),
+      LogApi.fetchUserLogs({ page: 1, size: 5 })
+    ])
+    overview.value = overviewRes.data
+    imports.value = importRes.data.list
+    logs.value = logRes.data.list
+  } catch {
+    message.error('工作台数据加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadData)
 </script>

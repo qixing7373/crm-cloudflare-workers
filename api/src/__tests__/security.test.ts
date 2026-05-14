@@ -16,14 +16,14 @@ function createSecurityApp(db: D1Database) {
   _app.use('/api/*', auth)
 
   // 需要 manager
-  _app.get('/api/users', requireRole('manager'), (c) => c.json({ code: 1, msg: 'ok', data: 'user_list' }))
-  _app.get('/api/contacts', requireRole('manager'), (c) => c.json({ code: 1, msg: 'ok', data: 'contacts' }))
-  _app.post('/api/import', requireRole('manager'), (c) => c.json({ code: 1, msg: 'ok', data: 'imported' }))
+  _app.get('/api/user', requireRole('manager'), (c) => c.json({ code: 1, msg: 'ok', data: 'user_list' }))
+  _app.get('/api/contact', requireRole('manager'), (c) => c.json({ code: 1, msg: 'ok', data: 'contacts' }))
+  _app.post('/api/import/sync', requireRole('manager'), (c) => c.json({ code: 1, msg: 'ok', data: 'imported' }))
 
   // 需要 superadmin
-  _app.put('/api/config', requireRole('superadmin'), (c) => c.json({ code: 1, msg: 'ok', data: 'config_updated' }))
+  _app.put('/api/field/1', requireRole('superadmin'), (c) => c.json({ code: 1, msg: 'ok', data: 'field_updated' }))
   _app.delete('/api/contact/1', requireRole('superadmin'), (c) => c.json({ code: 1, msg: 'ok', data: 'deleted' }))
-  _app.get('/api/export', requireRole('superadmin'), (c) => c.json({ code: 1, msg: 'ok', data: 'csv_data' }))
+  _app.get('/api/export/contacts', requireRole('superadmin'), (c) => c.json({ code: 1, msg: 'ok', data: 'csv_data' }))
 
   // staff 可访问
   _app.get('/api/me', (c) => {
@@ -42,7 +42,7 @@ describe('D1. JWT 攻击', () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 1, role: 'superadmin', status: 'active' }, 'wrong-secret')
-    const _res = await _app.request('/api/config', {
+    const _res = await _app.request('/api/field/1', {
       method: 'PUT',
       headers: { Authorization: `Bearer ${_token}` },
     })
@@ -56,7 +56,7 @@ describe('D1. JWT 攻击', () => {
     const _h = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' })).replace(/=+$/, '')
     const _p = btoa(JSON.stringify({ id: 1, role: 'superadmin', status: 'active', exp: Math.floor(Date.now() / 1000) + 9999 })).replace(/=+$/, '')
     const _none_token = `${_h}.${_p}.`
-    const _res = await _app.request('/api/config', {
+    const _res = await _app.request('/api/field/1', {
       method: 'PUT',
       headers: { Authorization: `Bearer ${_none_token}` },
     })
@@ -116,20 +116,20 @@ describe('D1. JWT 攻击', () => {
 // ═══ D2. 越权攻击 ═══
 
 describe('D2. 越权攻击', () => {
-  it('#1 staff → 管理员 API (users) → code -400 FORBIDDEN', async () => {
+  it('#1 staff → 管理员 API (user) → code -400 FORBIDDEN', async () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 1, role: 'staff', status: 'active' }, SECRET)
-    const _res = await _app.request('/api/users', { headers: { Authorization: `Bearer ${_token}` } })
+    const _res = await _app.request('/api/user', { headers: { Authorization: `Bearer ${_token}` } })
     const _json = await _res.json() as any
     expect(_json.code).toBe(-400)
   })
 
-  it('#2 staff → 总库 contacts → code -400', async () => {
+  it('#2 staff → 总库 contact → code -400', async () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 1, role: 'staff', status: 'active' }, SECRET)
-    const _res = await _app.request('/api/contacts', { headers: { Authorization: `Bearer ${_token}` } })
+    const _res = await _app.request('/api/contact', { headers: { Authorization: `Bearer ${_token}` } })
     expect((await _res.json() as any).code).toBe(-400)
   })
 
@@ -137,15 +137,15 @@ describe('D2. 越权攻击', () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 1, role: 'staff', status: 'active' }, SECRET)
-    const _res = await _app.request('/api/import', { method: 'POST', headers: { Authorization: `Bearer ${_token}` } })
+    const _res = await _app.request('/api/import/sync', { method: 'POST', headers: { Authorization: `Bearer ${_token}` } })
     expect((await _res.json() as any).code).toBe(-400)
   })
 
-  it('#4 manager → 超管 API (config) → code -400', async () => {
+  it('#4 manager → 超管 API (field) → code -400', async () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 2, role: 'manager', status: 'active' }, SECRET)
-    const _res = await _app.request('/api/config', { method: 'PUT', headers: { Authorization: `Bearer ${_token}` } })
+    const _res = await _app.request('/api/field/1', { method: 'PUT', headers: { Authorization: `Bearer ${_token}` } })
     expect((await _res.json() as any).code).toBe(-400)
   })
 
@@ -161,7 +161,7 @@ describe('D2. 越权攻击', () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 2, role: 'manager', status: 'active' }, SECRET)
-    const _res = await _app.request('/api/export', { headers: { Authorization: `Bearer ${_token}` } })
+    const _res = await _app.request('/api/export/contacts', { headers: { Authorization: `Bearer ${_token}` } })
     expect((await _res.json() as any).code).toBe(-400)
   })
 
@@ -170,13 +170,13 @@ describe('D2. 越权攻击', () => {
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 3, role: 'superadmin', status: 'active' }, SECRET)
 
-    const _r1 = await _app.request('/api/users', { headers: { Authorization: `Bearer ${_token}` } })
+    const _r1 = await _app.request('/api/user', { headers: { Authorization: `Bearer ${_token}` } })
     expect((await _r1.json() as any).code).toBe(1)
 
-    const _r2 = await _app.request('/api/config', { method: 'PUT', headers: { Authorization: `Bearer ${_token}` } })
+    const _r2 = await _app.request('/api/field/1', { method: 'PUT', headers: { Authorization: `Bearer ${_token}` } })
     expect((await _r2.json() as any).code).toBe(1)
 
-    const _r3 = await _app.request('/api/export', { headers: { Authorization: `Bearer ${_token}` } })
+    const _r3 = await _app.request('/api/export/contacts', { headers: { Authorization: `Bearer ${_token}` } })
     expect((await _r3.json() as any).code).toBe(1)
   })
 
@@ -184,7 +184,7 @@ describe('D2. 越权攻击', () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 1, role: 'manager', status: 'disabled' }, SECRET)
-    const _res = await _app.request('/api/users', { headers: { Authorization: `Bearer ${_token}` } })
+    const _res = await _app.request('/api/user', { headers: { Authorization: `Bearer ${_token}` } })
     expect((await _res.json() as any).code).toBe(-103)
   })
 
@@ -203,7 +203,7 @@ describe('D2. 越权攻击', () => {
     const _db = wrapAsD1(createTestDB())
     const _app = createSecurityApp(_db)
     const _token = await makeToken({ id: 2, role: 'manager', status: 'active' }, SECRET)
-    const _res = await _app.request('/api/import', { method: 'POST', headers: { Authorization: `Bearer ${_token}` } })
+    const _res = await _app.request('/api/import/sync', { method: 'POST', headers: { Authorization: `Bearer ${_token}` } })
     expect((await _res.json() as any).code).toBe(1)
   })
 })

@@ -11,6 +11,7 @@ import { success, fail } from '@/hono/response'
 import { registerSchema, loginSchema } from '@/model/auth.dto'
 import { registerUser, loginUser } from '@/service/auth.svc'
 import { auth } from '@/middleware/auth.mid'
+import { UserDao } from '@/dao/user.dao'
 
 const authRouter = new Hono<AppEnv>()
 
@@ -40,7 +41,16 @@ authRouter.post('/login', async (c) => {
 // ── GET /auth/check ── 需要 JWT，手动挂 auth（因为 /auth 是公开前缀）
 authRouter.get('/check', auth, async (c) => {
   const _user = c.get('user')
-  return success(c, { id: _user.id, username: _user.username, role: _user.role })
+  const _fresh = await UserDao.findById(c.get('db'), _user.id)
+  if (!_fresh || _fresh.status === 'disabled') return fail(c, ErrorCode.UNAUTHORIZED)
+
+  return success(c, {
+    id: _fresh.id,
+    username: _fresh.username,
+    role: _fresh.role,
+    status: _fresh.status,
+    group_id: _fresh.group_id,
+  })
 })
 
 // ── PUT /auth/password ── 修改当前用户密码
